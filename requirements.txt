@@ -1,0 +1,17 @@
+asgiref==3.8.1
+Django==5.2.1
+django-allauth==65.8.1
+django-cors-headers==4.7.0
+djangorestframework==3.16.0
+graphene==3.4.3
+graphene-django==3.2.3
+graphql-core==3.2.6
+graphql-relay==3.2.0
+promise==2.3
+psycopg2==2.9.10
+python-dateutil==2.9.0.post0
+python-decouple==3.8
+six==1.17.0
+sqlparse==0.5.3
+text-unidecode==1.3
+typing_extensions==4.13.2

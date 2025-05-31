@@ -1,0 +1,70 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: near-cash-api
+    container_name: near-cash-api
+    hostname: near-cash-api
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - rabbitmq
+      - database
+    networks:
+      - near-cash-network
+    volumes:
+      - .:/app
+    restart: always
+
+  redis:
+    image: redis:latest
+    container_name: near-cash-redis
+    hostname: near-cash-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - near-cash-network
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    env_file:
+      - .env
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: near-cash-rabbitmq
+    hostname: near-cash-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - near-cash-network
+    restart: unless-stopped
+    env_file:
+      - .env
+
+  database:
+    image: postgres
+    container_name: near-cash-database
+    hostname: near-cash-database
+    ports:
+      - "5432:5432"
+    networks:
+      - near-cash-network
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  near-cash-network:
