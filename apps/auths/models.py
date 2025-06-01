@@ -1,10 +1,10 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
 from interfaces.managers.users import UserManager
 from interfaces.models.base import BaseModel
 
-class User(BaseModel, AbstractBaseUser):
+class User(BaseModel, AbstractBaseUser, PermissionsMixin):
     STATUSES = (
         ("ACTIVE", "ACTIVE"),
         ("IN_ACTIVE", "IN_ACTIVE"),
@@ -19,6 +19,7 @@ class User(BaseModel, AbstractBaseUser):
     status = models.CharField(max_length=20, default='ACTIVE', choices=STATUSES)
 
     objects = UserManager(active=True)
+    all_objects = UserManager(active=False)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name', 'username']

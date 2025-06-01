@@ -84,7 +84,7 @@ WSGI_APPLICATION = 'near_cash.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config("DB_NAME", cast=str, default='near_cash_db'),
+        'NAME': config("DB_NAME", cast=str, default='nearcash'),
         "USER": config("DB_USER", cast=str, default='postgres'),
         "PASSWORD": config("DB_PASSWORD", cast=str, default='password'),
         "HOST": config("DB_HOST", cast=str, default='localhost'),
@@ -134,3 +134,24 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'apps.auths': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
