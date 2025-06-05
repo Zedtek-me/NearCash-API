@@ -14,8 +14,9 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=30)
     username = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
+    is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
-    password = models.CharField(max_length=128)
+    password = models.CharField(max_length=128, blank=True)
     status = models.CharField(max_length=20, default='ACTIVE', choices=STATUSES)
 
     objects = UserManager(active=True)

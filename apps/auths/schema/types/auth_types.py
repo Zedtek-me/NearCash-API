@@ -8,7 +8,7 @@ from apps.auths.models import User
 class UserType(DjangoObjectType):
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'is_active', 'is_staff')
+        fields = "__all__"
 
 
 class LoginInfoType(ObjectType):

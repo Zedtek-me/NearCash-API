@@ -20,4 +20,4 @@ class GoogleService(AuthInterface):
         """
         Returns the Google OAuth2 authorization URL.
         """
-        return cls.flow.authorization_url()
+        return cls.flow.authorization_url()[0]

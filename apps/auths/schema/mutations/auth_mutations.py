@@ -28,7 +28,7 @@ class SignUpMutation(graphene.Mutation):
 class LoginMutation(graphene.Mutation):
 
     message = graphene.String()
-    data = LoginInfoType()
+    data = graphene.Field(LoginInfoType)
 
     class Arguments:
         email = graphene.String(required=False)
@@ -50,7 +50,7 @@ class LoginMutation(graphene.Mutation):
             "token": token
         }
         return LoginMutation(
-            message="Authentication mutation executed successfully.",
+            message="success.",
             data=LoginInfoType(**data)
         )
 
