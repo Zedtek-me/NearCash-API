@@ -17,5 +17,5 @@ class LoginInfoType(ObjectType):
     """
     user = graphene.Field(UserType, required=False)
     token = graphene.String(required=False)
-    redirect_url = graphene.String(required=False)
+    auth_url = graphene.String(required=False)
 

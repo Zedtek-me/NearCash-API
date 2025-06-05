@@ -2,10 +2,12 @@ from typing import Optional, Dict, Any, List, Union
 from django.conf import settings
 from google_auth_oauthlib.flow import Flow
 
-class GoogleService:
+from interfaces.auths.interface import AuthInterface
+
+class GoogleService(AuthInterface):
 
     flow = Flow.from_client_secrets_file(
-        "",
+        f"{settings.BASE_DIR}/oauth_client_ids.json",
         scopes=[
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"
