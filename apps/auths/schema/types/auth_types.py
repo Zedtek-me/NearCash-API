@@ -19,3 +19,11 @@ class LoginInfoType(ObjectType):
     token = graphene.String(required=False)
     auth_url = graphene.String(required=False)
 
+
+class AuthInputType(graphene.InputObjectType):
+    email = graphene.String()
+    first_name = graphene.String()
+    last_name = graphene.String()
+    username = graphene.String()
+    password = graphene.String()
+ 

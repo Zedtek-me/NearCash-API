@@ -1,11 +1,29 @@
 import graphene
 from graphene import ObjectType
+from django.db import transaction
 
 from apps.auths.schema.types.enums import SignInWithEnum
-from apps.auths.schema.types.auth_types import LoginInfoType
+from apps.auths.schema.types.auth_types import LoginInfoType, AuthInputType
 
 from utils.helpers.logs import logger
 from utils.auth_utils.auths import AuthUtils
+
+
+
+class SignUpMutation(graphene.Mutation):
+    message = graphene.String()
+    data = graphene.Field(LoginInfoType)
+
+    class Arguments:
+        data = AuthInputType()
+        sign_in_with = SignInWithEnum(required=False)
+
+    @transaction.atomic
+    def mutate(self, info, **kwargs):
+        pass
+
+
+
 
 class LoginMutation(graphene.Mutation):
 
@@ -39,4 +57,5 @@ class LoginMutation(graphene.Mutation):
 class Mutation(ObjectType):
     login = LoginMutation.Field(description="Login mutation for user authentication.")
     logout = None
-    signup = None
+    signup = SignUpMutation.Field(description="Sign up mutation for user registration.")
+
