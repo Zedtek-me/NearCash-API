@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 from decouple import config
+from corsheaders.defaults import default_headers, default_methods
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,6 +47,14 @@ INSTALLED_APPS = [
     'graphene_django',
     # project apps
     "apps.auths"
+]
+
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_HEADERS = [
+    *default_headers,
+]
+CORS_ALLOWED_METHODS = [
+    *default_methods,
 ]
 
 MIDDLEWARE = [
@@ -93,7 +102,9 @@ DATABASES = {
 }
 
 AUTH_USER_MODEL = "auths.User"
-
+GRAPHENE = {
+    "SCHEMA": "near_cash.schema.schema",
+}
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -155,3 +166,5 @@ LOGGING = {
         },
     },
 }
+
+GOOGLE_REDIRECT_URI = config("GOOGLE_REDIRECT_URI", cast=str, default='http://localhost:8015/google/auth')
