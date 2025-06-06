@@ -32,3 +32,26 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.first_name} -> {self.last_name} -> ({self.email})"
+
+
+class SocialToken(BaseModel):
+    """records social tokens"""
+    TOKEN_SOURCES = (
+        ("GOOGLE", "GOOGLE"),
+        ("FACEBOOK", "FACEBOOK")
+    )
+    user = models.ForeignKey(
+        to="auths.User", on_delete=models.CASCADE, null=True
+    )
+    source = models.CharField(max_length=255, blank=True, choices=TOKEN_SOURCES)
+    access_token = models.TextField(blank=True)
+    refresh_token = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "SocialToken"
+        verbose_name_plural = "SocialTokens"
+        db_table = "social_token"
+
+    def __str__(self):
+        return f"{self.user.email}->{self.source} token"

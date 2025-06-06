@@ -13,7 +13,7 @@ class UserManager(BaseUserManager):
         return super().get_queryset()
 
     def create_user(self, **kwargs):
-        if not "email" in kwargs:
+        if "email" not in kwargs:
             raise ValidationError("email is required!")
         password = kwargs.pop("password")
         user = self.model(email=self.clean(kwargs.get("email")), **kwargs)
