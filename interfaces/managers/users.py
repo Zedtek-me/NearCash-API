@@ -16,7 +16,7 @@ class UserManager(BaseUserManager):
         if "email" not in kwargs:
             raise ValidationError("email is required!")
         password = kwargs.pop("password")
-        user = self.model(email=self.clean(kwargs.get("email")), **kwargs)
+        user = self.model(email=self.normalize_email(kwargs.pop("email")), **kwargs)
         user.is_active = True
         if password:
             user.set_password(password)

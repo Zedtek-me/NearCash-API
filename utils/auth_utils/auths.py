@@ -1,7 +1,8 @@
 from typing import Optional, Dict, Any, List, Union
 
 from apps.auths.constants import OAUTH_PLATFORMS, PasswordAuthTypeEnum
-from apps.auths.models import User
+from apps.auths.models import User, SocialToken
+
 from interfaces.auths.interface import AuthInterface
 from utils.helpers.logs import logger
 
@@ -19,9 +20,20 @@ class AuthUtils:
         """
         return self.auth_service.get_auth_url()
 
-    def get_auth_tokens(self, auth_code: str)-> Union[dict, str, None]:
+    def get_auth_tokens(
+        self, auth_code: str, source: Optional[str]="GOOGLE"
+    )-> Union[dict, str, None]:
         """uses auth codes to fetch auth tokens"""
-        return self.auth_service.get_auth_tokens(auth_code)
+        user_creds = self.auth_service.get_auth_tokens(auth_code)
+        cred_local_copy = SocialToken(
+            source=source,
+            access_token=user_creds.get("access_token"),
+            refresh_token=user_creds.get("refresh_token", "")
+        )
+        cred_local_copy.save()
+        user_creds["local_cred_id"] = cred_local_copy.id
+        logger.debug(f"user credentials obtained::: {user_creds}")
+        return user_creds
 
     @classmethod
     def authenticate_with_password(
@@ -29,26 +41,68 @@ class AuthUtils:
     ) -> Union[User, dict, str, Exception, tuple, list]:
         """authenticates user with email and password"""
         auth_type: PasswordAuthTypeEnum = kwargs.get("auth_type")
-        if auth_type == auth_type.LOGIN:
-            # implement login check
-            return
+        skip_pass_check = kwargs.get("skip_pass_check", False)
+        logger.debug(f"email: {email}\n pass: {password}\n other kwargs: {kwargs} auth type in local authentication: {auth_type}")
+        if auth_type and auth_type == PasswordAuthTypeEnum.LOGIN.value:
+            user = User.objects.filter(email__iexact=email).first()
+            if not (user or password) and not skip_pass_check:
+                raise Exception("Invalid authentication credentials!")
+            if (password and not user.check_password(password) and not skip_pass_check):
+                raise Exception("Invalid authentication credentials!")
+            # TODO: create JWT tokens here
+            return user, None
         # implement password signup
-        return []
+        first_name, last_name = (kwargs.get("first_name", ""), kwargs.get("last_name", ""))
+        picture = kwargs.get("picture")
+        user_data = {
+            "email": email,
+            "password": password,
+            "first_name": first_name,
+            "last_name": last_name,
+            "username": f"{first_name} {last_name}"
+        }
+        user = User.objects.create_user(**user_data)
+        user.meta["picture"] = picture
+        user.save()
+        # TODO: create JWT tokens here
+        return [user, None]
 
     @classmethod
     def authorize_user_locally(
-        cls, user_info: dict
+        cls, user_info: dict, auth_type="signup",
+        source="GOOGLE"
     )-> Union[tuple, dict, str, list]:
         """
         uses the authorization tokens provided by the social auth to log user in locally
         """
-        logger.debug(f"user info gotten::: {user_info}")
-        return [None,None]
+        email = user_info.get("email", "")
+        first_name = user_info.get("given_name", "")
+        last_name = user_info.get("family_name")
+        picture = user_info.get("picture")
+        local_social_token_copy = SocialToken.fetch_instance(id=user_info.get("local_cred_id"))
+        user, token = cls.authenticate_with_password(
+            email, None, auth_type=auth_type, skip_pass_check=True,
+            first_name=first_name, last_name=last_name, picture=picture
+        )
+        if user and local_social_token_copy:
+            # update existing tokens for this user to inactive
+            SocialToken.fetch_instance(return_all=True, user=user, source=source).update(is_active=False)
+            local_social_token_copy.user = user
+            local_social_token_copy.save()
+        return [user, token]
 
     def fetch_user_info(
         self, credentials: Union[dict, str]
     ) -> Union[dict, list]:
         """fetches user info via the credential tokens provided"""
-        logger.debug(f"credentials provided:::: {credentials}")
-        self.auth_service.fetch_user_info(credentials)
-        return {}
+        local_cred_id = credentials.pop("local_cred_id", None)
+        user_info = self.auth_service.fetch_user_info(credentials)
+        if user_info:
+            user_info["local_cred_id"] = local_cred_id
+        return user_info
+
+    @classmethod
+    def generate_user_local_auth_tokens(
+        cls, user: User, **kwargs
+    ) -> dict:
+        """creates a local copy of JWT tokens for user"""

@@ -16,12 +16,27 @@ class SignUpMutation(graphene.Mutation):
     data = graphene.Field(LoginInfoType)
 
     class Arguments:
-        data = AuthInputType()
-        sign_in_with = SignInWithEnum(required=False)
+        data = AuthInputType(required=False)
+        sign_up_with = SignInWithEnum(required=False)
 
     @transaction.atomic
     def mutate(self, info, **kwargs):
-        pass
+        signup_data = kwargs.get("data")
+        signup_with = kwargs.get("sign_up_with")
+        user = auth_url = token = None
+        if signup_with:
+            auth_url = AuthUtils(signup_with).get_auth_url()
+            logger.debug(f"OAuth2 authorization URL: {auth_url}")
+        else:
+            user, token = AuthUtils.authenticate_with_password(**signup_data)
+            return SignUpMutation(
+                message="signup successful!",
+                data=LoginInfoType(user, token=token)
+            )
+        return SignUpMutation(
+            message="success",
+            data=LoginInfoType(user=None, auth_url=auth_url)
+        )
 
 class LoginMutation(graphene.Mutation):
 
@@ -41,7 +56,9 @@ class LoginMutation(graphene.Mutation):
             auth_url = AuthUtils(sign_in_with).get_auth_url()
             logger.debug(f"OAuth2 authorization URL: {auth_url}")
         else:
-            user, token = AuthUtils.authenticate_with_password(email, password)
+            user, token = AuthUtils.authenticate_with_password(
+                email, password, auth_type="login"
+            )
         data = {
             "user": user,
             "auth_url": auth_url,
@@ -56,16 +73,24 @@ class AuthorizeWithCode(LoginMutation):
 
     class Arguments:
         code = graphene.String(required=True)
-        auth_type = SignInWithEnum(required=True)
+        social_type = SignInWithEnum(required=True)
+        auth_type = graphene.String(required=True)
 
+    @transaction.atomic
     def mutate(self, info, **kwargs):
+        acceptable_auth_types = ["login", "signup"]
         code = kwargs.get("code")
-        auth_type = kwargs.get("auth_type")
+        auth_type = kwargs.get("auth_type", "").lower()
+        social_type = kwargs.get("social_type")
         user = token = None
-        auth_obj = AuthUtils(auth_type)
-        credential_tokens = auth_obj.get_auth_tokens(code)
+        if auth_type not in acceptable_auth_types:
+            raise ValueError("auth type must be either: login or signup!")
+        auth_obj = AuthUtils(social_type)
+        credential_tokens = auth_obj.get_auth_tokens(code, social_type.name)
         user_info: Optional[dict] = auth_obj.fetch_user_info(credential_tokens)
-        user, token = auth_obj.authorize_user_locally(user_info)
+        user, token = auth_obj.authorize_user_locally(
+            user_info, auth_type=auth_type, source=social_type.name
+        )
         return AuthorizeWithCode(
             message="user successfully authorized",
             data=LoginInfoType(user=user, token=token)

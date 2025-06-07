@@ -22,8 +22,7 @@ class LoginInfoType(ObjectType):
 
 class AuthInputType(graphene.InputObjectType):
     email = graphene.String()
-    first_name = graphene.String()
-    last_name = graphene.String()
-    username = graphene.String()
+    first_name = graphene.String(required=False)
+    last_name = graphene.String(required=False)
+    username = graphene.String(required=False)
     password = graphene.String()
- 

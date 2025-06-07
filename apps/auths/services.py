@@ -1,6 +1,7 @@
 from typing import Optional, Dict, Any, List, Union
 from django.conf import settings
 from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build
 
 from interfaces.auths.interface import AuthInterface
 
@@ -41,5 +42,7 @@ class GoogleService(AuthInterface):
         """
         fetches user data using the credentials provided via the $get_auth_tokens method
         """
-        flow_cred = cls.flow.credentials
-        logger.debug(f"flow credentials object::::: {flow_cred}\n passed in user credentials: {credentials}")
+        user_credentials = cls.flow.credentials
+        auth_service = build("oauth2", "v2", credentials=user_credentials)
+        user_info = auth_service.userinfo().get().execute()
+        return user_info

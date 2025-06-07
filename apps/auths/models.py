@@ -1,3 +1,5 @@
+from typing import Optional
+
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
@@ -16,7 +18,7 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
-    password = models.CharField(max_length=128, blank=True)
+    password = models.CharField(max_length=128, null=True)
     status = models.CharField(max_length=20, default='ACTIVE', choices=STATUSES)
 
     objects = UserManager(active=True)
@@ -54,4 +56,13 @@ class SocialToken(BaseModel):
         db_table = "social_token"
 
     def __str__(self):
-        return f"{self.user.email}->{self.source} token"
+        return f"{self.source} token"
+
+    @classmethod
+    def fetch_instance(cls, return_all: Optional[bool]=False, **filter_params):
+        """factory method to return its instance"""
+        instances = cls.objects.filter(**filter_params)
+        if return_all:
+            return instances
+        return instances.first()
+
