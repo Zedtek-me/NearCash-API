@@ -43,7 +43,6 @@ class AuthUtils:
         """authenticates user with email and password"""
         auth_type: PasswordAuthTypeEnum = kwargs.get("auth_type")
         skip_pass_check = kwargs.get("skip_pass_check", False)
-        logger.debug(f"email: {email}\n pass: {password}\n other kwargs: {kwargs} auth type in local authentication: {auth_type}")
         if auth_type and auth_type == PasswordAuthTypeEnum.LOGIN.value:
             user = User.objects.filter(email__iexact=email).first()
             if not (user or password) and not skip_pass_check:
@@ -109,5 +108,4 @@ class AuthUtils:
         """creates a local copy of JWT tokens for user"""
         payload = jwt_payload(user)
         token = jwt_encode(payload)
-        logger.debug(f"generated jwt token:::: {token}")
         return token
