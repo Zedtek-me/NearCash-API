@@ -5,6 +5,7 @@ charset-normalizer==3.4.2
 Django==5.2.1
 django-allauth==65.8.1
 django-cors-headers==4.7.0
+django-graphql-jwt==0.4.0
 djangorestframework==3.16.0
 google-api-core==2.25.0
 google-api-python-client==2.171.0
@@ -25,6 +26,7 @@ protobuf==6.31.1
 psycopg2==2.9.10
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
+PyJWT==2.10.1
 pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 python-decouple==3.8

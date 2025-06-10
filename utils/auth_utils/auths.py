@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any, List, Union
+from graphql_jwt.utils import jwt_encode, jwt_payload
 
 from apps.auths.constants import OAUTH_PLATFORMS, PasswordAuthTypeEnum
 from apps.auths.models import User, SocialToken
@@ -47,10 +48,10 @@ class AuthUtils:
             user = User.objects.filter(email__iexact=email).first()
             if not (user or password) and not skip_pass_check:
                 raise Exception("Invalid authentication credentials!")
-            if (password and not user.check_password(password) and not skip_pass_check):
+            if (user and password and not user.check_password(password) and not skip_pass_check):
                 raise Exception("Invalid authentication credentials!")
-            # TODO: create JWT tokens here
-            return user, None
+            token = cls.generate_user_local_auth_tokens(user)
+            return [user, token]
         # implement password signup
         first_name, last_name = (kwargs.get("first_name", ""), kwargs.get("last_name", ""))
         picture = kwargs.get("picture")
@@ -64,8 +65,8 @@ class AuthUtils:
         user = User.objects.create_user(**user_data)
         user.meta["picture"] = picture
         user.save()
-        # TODO: create JWT tokens here
-        return [user, None]
+        token = cls.generate_user_local_auth_tokens(user)
+        return [user, token]
 
     @classmethod
     def authorize_user_locally(
@@ -106,3 +107,7 @@ class AuthUtils:
         cls, user: User, **kwargs
     ) -> dict:
         """creates a local copy of JWT tokens for user"""
+        payload = jwt_payload(user)
+        token = jwt_encode(payload)
+        logger.debug(f"generated jwt token:::: {token}")
+        return token
