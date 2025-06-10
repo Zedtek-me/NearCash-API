@@ -4,6 +4,7 @@ from typing import Union, Optional
 class AuthInterface(ABC):
     """to be implemented by all auth services"""
     NOT_IMPLEMENTED = "method not implemented!"
+
     @classmethod
     @abstractmethod
     def get_auth_url(cls) -> Optional[str]:
