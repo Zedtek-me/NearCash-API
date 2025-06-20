@@ -1,6 +1,7 @@
 from graphene import Schema, ObjectType
 from apps.auths.schema.mutations.auth_mutations import Mutation as AuthMutation
 from apps.auths.schema.queries.auth_queries import Query as AuthQuery
+from apps.auths.schema.mutations.user_mutations import Mutation as UserMutation
 
 class RootQuery(
     AuthQuery,
@@ -13,6 +14,7 @@ class RootQuery(
 
 class RootMutation(
     AuthMutation,
+    UserMutation,
     ObjectType
 ):
     """
