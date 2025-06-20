@@ -2,6 +2,8 @@ from typing import Optional, Union
 from apps.auths.models import User
 from apps.core.models import Business
 
+from utils.helpers.logs import logger
+
 class BusinessUtil:
 
     @classmethod
@@ -9,7 +11,11 @@ class BusinessUtil:
         cls, user: User, data: dict
     ) -> Business:
         """creates a vendor business"""
-        business = Business.objects.create(**data)
-        business.owner = user
+        country = data.get("country", "").title()
+        # TODO: use a mapping of countries and their currencies
+        # in order to update currency, in case none is provided
+        business = Business.objects.create(owner=user, **data)
+        if country == "Nigeria":
+            business.currency = "NGN"
         business.save()
         return business
