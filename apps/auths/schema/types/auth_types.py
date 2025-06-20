@@ -3,6 +3,8 @@ from graphene import ObjectType
 from graphene_django import DjangoObjectType
 
 from apps.auths.models import User
+from apps.auths.schema.types.enums import UserTypeEnum
+from apps.core.schema.types.business_types import CreateBusinessInputType
 
 
 class UserType(DjangoObjectType):
@@ -33,8 +35,11 @@ class AuthInputType(graphene.InputObjectType):
     password = graphene.String()
 
 class UpdateUserInputType(graphene.InputObjectType):
-    user_type = graphene.String(required=False)
+    user_type = UserTypeEnum(required=False)
     first_name = graphene.String(required=False)
     last_name = graphene.String(required=False)
     username = graphene.String(required=False)
     picture = graphene.String(required=False)
+
+    # business data
+    business_data = CreateBusinessInputType(required=False)
