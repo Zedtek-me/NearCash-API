@@ -42,11 +42,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',    
     # third-party apps
     'rest_framework',
-    'rest_framework.authtoken',
     'corsheaders',
     'graphene_django',
     # project apps
-    "apps.auths"
+    "apps.auths",
+    "apps.core",
+    "apps.wallet",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True

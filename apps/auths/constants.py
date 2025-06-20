@@ -4,6 +4,8 @@ from apps.auths.services import GoogleService
 
 OAUTH_PLATFORMS = {
     "GOOGLE": GoogleService,
+    "FACEBOOK": None,  # Placeholder for Facebook service
+    "GENERAL": None
 }
 
 

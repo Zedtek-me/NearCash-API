@@ -25,7 +25,7 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
     all_objects = UserManager(active=False)
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'username']
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'username', 'password']
 
     class Meta:
         db_table = 'user'

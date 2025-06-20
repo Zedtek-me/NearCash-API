@@ -13,4 +13,3 @@ class BaseModel(models.Model):
         ordering = ['-last_updated','-date_created']
         verbose_name = "Base Model"
         verbose_name_plural = "Base Models"
-        db_table = 'base_model'
