@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',    
+    'django.contrib.gis',  # for GIS support
     # third-party apps
     'rest_framework',
     'corsheaders',
@@ -94,7 +95,7 @@ WSGI_APPLICATION = 'near_cash.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': config("DB_NAME", cast=str, default='nearcash'),
         "USER": config("DB_USER", cast=str, default='postgres'),
         "PASSWORD": config("DB_PASSWORD", cast=str, default='password'),
