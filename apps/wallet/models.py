@@ -72,7 +72,7 @@ class Transaction(BaseModel):
         max_length=25, null=True, blank=True,
         help_text="ID of the wallet used for the transaction"
     )
-    
+
     class Meta:
         db_table = 'transaction'
         verbose_name = "Transaction"

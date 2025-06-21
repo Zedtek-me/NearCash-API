@@ -14,6 +14,7 @@ class Business(BaseModel):
     owner = models.ForeignKey(to="auths.User", on_delete=models.CASCADE, related_name="businesses")
     description = models.TextField(blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
+    address = models.TextField(null=True)
     currency = models.CharField(max_length=10, blank=True, null=True)
     parent_business_id = models.CharField(max_length=25, blank=True, null=True)
     status = models.CharField(

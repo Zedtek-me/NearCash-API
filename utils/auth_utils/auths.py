@@ -45,21 +45,21 @@ class AuthUtils:
         skip_pass_check = kwargs.get("skip_pass_check", False)
         if auth_type and auth_type == PasswordAuthTypeEnum.LOGIN.value:
             user = User.objects.filter(email__iexact=email).first()
-            if not (user or password) and not skip_pass_check:
-                raise Exception("Invalid authentication credentials!")
-            if (user and password and not user.check_password(password) and not skip_pass_check):
+            if not user:
+                raise Exception("Invalid authentication credentials. Please sign up if you don't have an account!")
+            if (user and not user.check_password(password) and not skip_pass_check):
                 raise Exception("Invalid authentication credentials!")
             token = cls.generate_user_local_auth_tokens(user)
             return [user, token]
         # implement password signup
         first_name, last_name = (kwargs.get("first_name", ""), kwargs.get("last_name", ""))
-        picture = kwargs.get("picture")
+        picture , username = kwargs.get("picture"), kwargs.get("username")
         user_data = {
             "email": email,
             "password": password,
             "first_name": first_name,
             "last_name": last_name,
-            "username": f"{first_name} {last_name}"
+            "username": username or f"{first_name} {last_name}"
         }
         user = User.objects.create_user(**user_data)
         user.meta["picture"] = picture
