@@ -4,10 +4,13 @@ from apps.auths.schema.queries.auth_queries import Query as AuthQuery
 from apps.auths.schema.mutations.user_mutations import Mutation as UserMutation
 from apps.wallet.schema.mutations.wallet import Mutation as WalletMutation
 from apps.wallet.schema.queries.wallet import Query as WalletQuery
+from apps.core.schema.mutations.business_mutations import Mutation as BusinessMutation
+from apps.core.schema.queries.business_queries import Query as BusinessQuery
 
 class RootQuery(
     AuthQuery,
     WalletQuery,
+    BusinessQuery,
     ObjectType
 ):
     """
@@ -19,6 +22,7 @@ class RootMutation(
     AuthMutation,
     UserMutation,
     WalletMutation,
+    BusinessMutation,
     ObjectType
 ):
     """

@@ -179,3 +179,6 @@ LOGGING = {
 }
 
 GOOGLE_REDIRECT_URI = config("GOOGLE_REDIRECT_URI", cast=str, default='http://localhost:8015/google/auth')
+
+GEOAPIFY_BASE_URL = config("GEOAPIFY_BASE_URL", cast=str, default='https://api.geoapify.com/v1')
+GEOAPIFY_API_KEY = config("GEOAPIFY_API_KEY", cast=str, default='your_geoapify_api_key')

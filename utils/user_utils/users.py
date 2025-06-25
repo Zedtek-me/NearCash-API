@@ -27,12 +27,12 @@ class UserUtil:
         if user_type == "VENDOR" and first_time:
             business_data = data.pop("business_data", {})
             BusinessUtil.create_business(
-                user, cls._prepare_business_data(business_data)
+                user, cls.prepare_business_data(business_data)
             )
         return user
 
     @classmethod
-    def _prepare_business_data(
+    def prepare_business_data(
         cls, data: dict
     ) -> dict:
         """prepares data for business creation"""
