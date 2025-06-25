@@ -60,8 +60,41 @@ class GeoapifyService(LocationInterface):
             "format": "json",
             "text": address,
             "filter": country_code,
+            "lan": "en",
+            "type": "street",
+            "limit": 1,
             "apiKey": cls.API_KEY
         }
-        response = cls._initiate_request(endpoint, params=params)
-        logger.info(f"Geoapify response: {response}")
-        return response
+        try:
+            response = cls._initiate_request(endpoint, params=params)
+        except Exception as e:
+            logger.exception(f"Error fetching coordinates: {e}")
+            return {}
+        data = response.get("results", [])
+        first_street = data[0] if data else {}
+        logger.info(f"Geoapify response: {response}\n\nFirst street data: {first_street}")
+        coordinates = {
+            "latitude": first_street.get("lat", 0.0),
+            "longitude": first_street.get("lon", 0.0)
+        }
+        return coordinates
+
+
+class OpenCageService(LocationInterface):
+    """all things related to opencage platform"""
+    # BASE_URL = settings.OPENCAGE_BASE_URL
+    # API_KEY = settings.OPENCAGE_API_KEY
+
+    @classmethod
+    def get_coordinate(cls, address: str, country_code: Optional[str] = "ng") -> dict:
+        """address to coordinates"""
+        # endpoint = "/geocode/v1/json"
+        # params = {
+        #     "q": address,
+        #     "key": cls.API_KEY,
+        #     "countrycode": country_code,
+        #     "limit": 1
+        # }
+        # response = cls._initiate_request(endpoint, params=params)
+        # logger.info(f"OpenCage response: {response}")
+        # return response
