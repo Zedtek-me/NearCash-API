@@ -5,11 +5,15 @@ from django.db.models import Q, F
 
 from apps.core.models import Business
 from apps.core.schema.types.business_types import (
-    BusinessType
+    BusinessType, RouteInputType
 )
+from apps.core.constants import LOCATION_SERVICES
 
-from utils.core_utils.business_utils import BusinessUtil
+from utils.core_utils.business_utils import BusinessUtil, GeolocationUtils
+from utils.helpers.kwargs import KwargUtil
 from utils.helpers.pagination import PaginationUtil
+from utils.helpers.logs import logger
+from utils.helpers.exception import CustomException
 
 
 class Query(graphene.ObjectType):
@@ -20,7 +24,6 @@ class Query(graphene.ObjectType):
     )
     businesses = graphene.List(
         BusinessType,
-        location=graphene.String(),
         address=graphene.String(),
         id=graphene.String(),
         name=graphene.String(),
@@ -33,13 +36,32 @@ class Query(graphene.ObjectType):
         current_long=graphene.Float(required=True),
     )
 
+    routes = graphene.Field(
+        graphene.JSONString,
+        coordinates=RouteInputType(required=True),
+        business_id=graphene.String(),
+    )
+
     @login_required
     def resolve_business(self, info, **kwargs) -> BusinessType:
-        """"""
+        """single business"""
+        return BusinessUtil.get_business({"id": kwargs.get("business_id")})
 
     @login_required
     def resolve_businesses(self, info, **kwargs) -> list:
-        """"""
+        """all businesses"""
+        page_count = kwargs.pop("page_count", 10)
+        page_no = kwargs.pop("page_number", 1)
+
+        businesses = BusinessUtil.get_businesses(
+            info.context.user, kwargs
+        )
+        paginated = PaginationUtil.paginate(
+            businesses, page_no, page_count
+        )
+        Query.pagination = paginated
+        return paginated.pop("items")
+
 
     @login_required
     def resolve_businesses_around_me(self, info, **kwargs) -> list:
@@ -59,6 +81,35 @@ class Query(graphene.ObjectType):
         Query.pagination = paginated_businesses
         businesses = paginated_businesses.pop("items")
         return businesses
+
+    @login_required
+    def resolve_routes(
+        self, info, **kwargs
+    ):
+        """
+        Gets routes between two waypoints.
+        If business_id is provided, it fetches the business location.
+        """
+        coordinates = kwargs.get("coordinates")
+        start_coord = {
+            "longitude": coordinates.get("start_long"),
+            "latitude": coordinates.get("start_lat")
+        }
+        end_coord = {
+            "longitude": coordinates.get("end_long"),
+            "latitude": coordinates.get("end_lat")
+        }
+        business_id = kwargs.get("business_id")
+
+        business = BusinessUtil.get_business({"id": business_id})
+        geoapify = LOCATION_SERVICES.get("geoapify")
+        routes = GeolocationUtils(geoapify).get_routes(
+            start_coord=start_coord,
+            end_coord= end_coord,
+            business=business,
+        )
+        logger.info(f"Routes response: {routes}")
+        return routes
 
     @login_required
     def resolve_pagination(

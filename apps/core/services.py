@@ -5,6 +5,9 @@ from django.conf import settings
 
 from interfaces.general.location import LocationInterface
 from utils.helpers.logs import logger
+from utils.helpers.exception import CustomException
+
+from apps.core.models import Business
 
 class GeoapifyService(LocationInterface):
     """all things related to geoapify platform"""
@@ -38,7 +41,6 @@ class GeoapifyService(LocationInterface):
                 timeout=10
             )
         response = cls._parse_response(response)
-        logger.info(f"Geoapify response: {response}")
         return response
 
     @classmethod
@@ -78,6 +80,37 @@ class GeoapifyService(LocationInterface):
             "longitude": first_street.get("lon", 0.0)
         }
         return coordinates
+
+    @classmethod
+    def get_routes(
+        cls, start_coord: dict, end_coord: Optional[dict] = None,
+        business: Optional[Business] = None, mode: Optional[str] = "walk"
+    ) -> dict:
+        """
+        gets routes between two coordinates.
+        ideally, this gets the routes between the current user location and a business location.
+        """
+        endpoint = "/routing"
+        if not (end_coord.get("longitude") and end_coord.get("latitude")) and not business:
+            raise CustomException(
+                message="Either end coordinates or business must be provided.",
+            )
+        if not end_coord.get("longitude") or not end_coord.get("latitude"):
+            end_coord = {
+                "latitude": business._location.y,
+                "longitude": business._location.x
+            }
+        params = {
+            "apiKey": cls.API_KEY,
+            "mode": mode,
+            "waypoints": f"{start_coord['latitude']},{start_coord['longitude']}|{end_coord['latitude']},{end_coord['longitude']}",
+        }
+        try:
+            response = cls._initiate_request(endpoint, params=params)
+        except Exception as e:
+            logger.exception(f"Error fetching routes: {e}")
+            response = {}
+        return response
 
 
 class OpenCageService(LocationInterface):

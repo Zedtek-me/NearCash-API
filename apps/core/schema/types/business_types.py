@@ -42,3 +42,10 @@ class CreateBusinessInputType(graphene.InputObjectType):
     country = graphene.String(required=False)
     parent_business_id = graphene.String(required=False)
     address = graphene.String(required=False)
+
+
+class RouteInputType(graphene.InputObjectType):
+    start_long = graphene.Float(required=True)
+    start_lat = graphene.Float(required=True)
+    end_long = graphene.Float(required=False)
+    end_lat = graphene.Float(required=False)

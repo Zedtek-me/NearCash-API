@@ -1,4 +1,4 @@
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Type
 
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance as Geodistance
@@ -32,7 +32,7 @@ class BusinessUtil:
             business.address, country_code=country_code
         )
         logger.debug(f"Coordinates for business {business.name}: {coordinates}")
-        # TODO: if for some reasons no coordinate is gotten from this service, we shoulld rotate our geo providers
+        # TODO: if for some reasons no coordinate is gotten from this service, we should rotate our geo providers
         business._location = Point(
             coordinates.get("longitude", 0),
             coordinates.get("latitude", 0), srid=4326
@@ -51,5 +51,31 @@ class BusinessUtil:
         ).filter(
             _location__distance_lte=(point, radius)
         ).order_by("distance")
-        logger.debug(f"Found {len(businesses)} businesses within {radius} meters of the given coordinates.")
+        return businesses
+
+    @classmethod
+    def get_business(
+        cls, filter_params: dict
+    ) -> Business:
+        return Business.objects.filter(**filter_params).first()
+
+    @classmethod
+    def get_businesses(
+        cls, user: Type["User"], data: dict
+    ) -> List[Business]:
+        """returns all the businesses for a user"""
+        filter_params = {"owner": user}
+        if data.get("id"):
+            filter_params["id"] = data["id"]
+        if data.get("owner_id"):
+            del filter_params["owner"]
+            filter_params["owner__id"] = data["owner_id"]
+        if data.get("name"):
+            filter_params["name__icontains"] = data["name"]
+        if data.get("address"):
+            filter_params["address__icontains"] = data["address"]
+
+        businesses = Business.objects.filter(
+            **filter_params
+        )
         return businesses

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+from typing import Optional, Union, Type
 
 class LocationInterface(ABC):
 
@@ -11,3 +11,12 @@ class LocationInterface(ABC):
         Returns a dictionary with 'latitude' and 'longitude'.
         """
         raise NotImplementedError("Method get_coordinate not implemented!")
+
+    @classmethod
+    @abstractmethod
+    def get_routes(
+        cls, start_coord: dict, end_coord: Optional[dict] = None,
+        business: Optional[Type["Business"]] = None, mode: Optional[str] = "walk"
+    ) -> dict:
+        """returns routes between two waypoints"""
+        raise NotImplementedError("Method get_routes not implemented!")
