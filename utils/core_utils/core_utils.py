@@ -1,4 +1,5 @@
 from typing import Union, Optional, Type, List
+import logging
 
 from django.db import transaction
 
@@ -6,10 +7,15 @@ from apps.core.models import (
     Business, BusinessTransactionPolicy,
     BusinessClientCategory, CategoryClient
 )
+from apps.core.schema.types.business_types import CashCollectionModes
 
 from apps.auths.models import User
 
 from utils.helpers.exception import CustomException
+
+logger = logging.getLogger("apps.auths")
+logger.setLevel(logging.DEBUG)
+
 
 class CoreUtil:
 
@@ -39,6 +45,11 @@ class CoreUtil:
         cls, business, policy_data: dict
     ) -> Optional[BusinessTransactionPolicy]:
         """creates business financial txn policy"""
+        cash_collection_mode = policy_data.pop("cash_collection_mode", None)
+        if cash_collection_mode and not isinstance(
+            cash_collection_mode, str
+        ):
+            policy_data["cash_collection_mode"] = cash_collection_mode.name
         return BusinessTransactionPolicy.objects.create(
             business=business, **policy_data
         )

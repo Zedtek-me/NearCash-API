@@ -89,3 +89,10 @@ class CashCollectionModes(graphene.Enum):
     MEET_UP = MEET_UP
     STORE_WALK_IN = STORE_WALK_IN
     MEET_UP_AND_STORE_WALK_IN = MEET_UP_AND_STORE_WALK_IN
+
+
+class CreateTransactionPolicyInputType(graphene.InputObjectType):
+    name = graphene.String()
+    description = graphene.String()
+    cash_collection_mode = CashCollectionModes()
+    meet_up_charge = graphene.Float()
