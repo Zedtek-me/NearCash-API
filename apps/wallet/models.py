@@ -6,7 +6,7 @@ from utils.helpers.validators import Validator
 
 from .constants import (
     COLLECTION_MODES, IN_PROGRESS, CANCELLED,
-    FULFILLED, MEETUP, OUTLET_WALK_IN, TXN_STATUSES
+    FULFILLED, MEET_UP, STORE_WALK_IN, TXN_STATUSES
 )
 
 class FinancialAsset(BaseModel):
