@@ -86,7 +86,7 @@ class CoreUtil:
             )
         if not clients or clients.count() < 1:
             raise CustomException(
-                message=f"Invalid client ID: {client_id}"
+                message=f"Invalid client ID: {client_ids}"
             )
         for client_user in clients:
             db_category_clients.append(
