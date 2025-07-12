@@ -118,7 +118,7 @@ class CategoryClient(BaseModel):
 
     def __repr__(self):
         return f"{self.category} -> {self.client}"
-    
+
     def __str__(self):
         return f"{self.category} -> {self.client}"
 
