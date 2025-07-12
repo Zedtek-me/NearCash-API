@@ -1,4 +1,4 @@
-from typing import Union, Optional, Type
+from typing import Union, Optional, Type, List
 
 from django.db import transaction
 
@@ -71,7 +71,7 @@ class CoreUtil:
         cls, user: User, data: Union[
             Type["AddClientToCategoryInputType"], dict
         ]
-    ) -> CategoryClient:
+    ) -> List[CategoryClient]:
         """adds a client to a business category"""
         category_id = data.get("category_id")
         client_ids = data.get("client_ids")
