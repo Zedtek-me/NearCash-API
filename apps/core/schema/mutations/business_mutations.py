@@ -1,13 +1,19 @@
 import graphene
 from graphql_jwt.decorators import login_required
 from django.db import transaction
-from apps.core.schema.types.business_types import BusinessType, CreateBusinessInputType
+from apps.core.schema.types.business_types import (
+    BusinessType, CreateBusinessInputType, UpdateBusinessInputType,
+    BusinessClientCategoryType, CreateClientCategoryInputType,
+    AddClientsToCategoryInputType, CategoryClientType
+)
 from apps.wallet.schema.types.wallet import (
     AssetInputType,
 )
 
 from utils.core_utils.business_utils import BusinessUtil
+from utils.core_utils.core_utils import CoreUtil
 from utils.wallet_utils.wallet import WalletUtil
+from utils.helpers.exception import CustomException
 
 
 class CreateBusiness(graphene.Mutation):
@@ -41,5 +47,83 @@ class CreateBusiness(graphene.Mutation):
             business=business
         )
 
+class UpdateBusiness(graphene.Mutation):
+    message = graphene.String()
+    business = graphene.Field(BusinessType)
+
+    class Arguments:
+        business_id = graphene.String(required=True)
+        update_data = UpdateBusinessInputType(required=False)
+
+    @login_required
+    @transaction.atomic
+    def mutate(self, info, **kwargs):
+        """updates a business"""
+        user = info.context.user
+
+        business_id = kwargs.get("business_id")
+        business = BusinessUtil.get_business({"id": business_id, "owner": user})
+        if not business:
+            raise CustomException(
+                message=f"invalid business id: {business_id}"
+            )
+        business = BusinessUtil.update_business(business, kwargs.get("update_data"))
+        return UpdateBusiness(
+            message="Business successfully updated",
+            business=business
+        )
+
+class CreateClientCategory(graphene.Mutation):
+    message = graphene.String()
+    category = graphene.Field(BusinessClientCategoryType)
+
+    class Arguments:
+        business_id = graphene.String(required=True)
+        category_info = CreateClientCategoryInputType(required=True)
+
+    @login_required
+    @transaction.atomic
+    def mutate(self, info, **kwargs):
+        """creates a client category for the business"""
+        user = info.context.user
+        business_id = kwargs.get("business_id")
+        category_info = kwargs.get("category_info")
+        business = BusinessUtil.get_business({"id": business_id, "owner": user})
+        if not business:
+            raise CustomException(f"invalid business id provided for user: {user.email}")
+        category = CoreUtil.create_business_client_category(
+            business, category_info
+        )
+        return CreateClientCategory(
+            message="Client category successfully created",
+            category=category
+        )
+
+class AddClientsToCategory(graphene.Mutation):
+    message = graphene.String()
+    category_clients = graphene.List(CategoryClientType)
+
+    class Arguments:
+        data = AddClientsToCategoryInputType(required=True)
+
+    @login_required
+    @transaction.atomic
+    def mutate(self, info, **kwargs):
+        user = info.context.user
+        data = kwargs.get("data")
+        category_clients = CoreUtil.add_client_to_category(
+            user, data
+        )
+        return AddClientsToCategory(
+            message="client successfully added to category!",
+            category_clients=category_clients
+        )
+
+
 class Mutation(graphene.ObjectType):
     create_business = CreateBusiness.Field(description="Create a new business for the user.")
+    update_business = UpdateBusiness.Field(description="Updates an existing business")
+    create_client_category = CreateClientCategory.Field(description="Creates a client category")
+    add_clients_to_a_category = AddClientsToCategory.Field(
+        description="Adds multiple client to a business category"
+    )

@@ -2,7 +2,13 @@ import graphene
 from django.contrib.gis.geos import Point
 
 from graphene_django import DjangoObjectType
-from apps.core.models import Business
+from apps.core.models import (
+    Business, BusinessClientCategory, BusinessTransactionPolicy,
+    CategoryClient
+)
+from apps.core.constants import (
+    MEET_UP, STORE_WALK_IN, MEET_UP_AND_STORE_WALK_IN
+)
 
 class PointFieldType(graphene.types.Scalar):
     """Custom GraphQL Scalar for GeoDjango PointField"""
@@ -31,10 +37,28 @@ class BusinessType(DjangoObjectType):
 
     class Meta:
         model = Business
-        exclude = ["_location"]
+        exclude = ["geo_location"]
 
     def resolve_location(self, info):
-        return self._location
+        return self.geo_location
+
+
+class BusinessClientCategoryType(DjangoObjectType):
+
+    class Meta:
+        model = BusinessClientCategory
+        fields = "__all__"
+
+class BusinessTransactionPolicyType(DjangoObjectType):
+    class Meta:
+        model = BusinessTransactionPolicy
+        fields = "__all__"
+
+class CategoryClientType(DjangoObjectType):
+    class Meta:
+        model = CategoryClient
+        fields = "__all__"
+
 
 class CreateBusinessInputType(graphene.InputObjectType):
     business_name = graphene.String(required=True)
@@ -43,9 +67,25 @@ class CreateBusinessInputType(graphene.InputObjectType):
     parent_business_id = graphene.String(required=False)
     address = graphene.String(required=False)
 
+class UpdateBusinessInputType(CreateBusinessInputType):
+    business_name = graphene.String(required=False)
 
 class RouteInputType(graphene.InputObjectType):
     start_long = graphene.Float(required=True)
     start_lat = graphene.Float(required=True)
     end_long = graphene.Float(required=False)
     end_lat = graphene.Float(required=False)
+
+class CreateClientCategoryInputType(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    description = graphene.String()
+    transaction_policy_id = graphene.String()
+
+class AddClientsToCategoryInputType(graphene.InputObjectType):
+    client_ids = graphene.List(graphene.String, required=True)
+    category_id = graphene.String(required=True)
+
+class CashCollectionModes(graphene.Enum):
+    MEET_UP = MEET_UP
+    STORE_WALK_IN = STORE_WALK_IN
+    MEET_UP_AND_STORE_WALK_IN = MEET_UP_AND_STORE_WALK_IN

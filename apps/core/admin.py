@@ -1,6 +1,9 @@
 from django.contrib import admin
 
-from .models import Business
+from .models import (
+    Business, BusinessTransactionPolicy, BusinessClientCategory,
+    CategoryClient
+)
 
 @admin.register(Business)
 class BusinessAdmin(admin.ModelAdmin):
@@ -17,3 +20,16 @@ class BusinessAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         return queryset.select_related('owner')
+
+
+@admin.register(BusinessClientCategory)
+class BusinessClientCategoryAdmin(admin.ModelAdmin):
+    pass
+
+@admin.register(BusinessTransactionPolicy)
+class BusinessTransactionPolicy(admin.ModelAdmin):
+    pass
+
+@admin.register(CategoryClient)
+class CategoryClientAdmin(admin.ModelAdmin):
+    pass

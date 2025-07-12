@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, Type
 from requests import request, Request
 
 from django.conf import settings
@@ -7,7 +7,6 @@ from interfaces.general.location import LocationInterface
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
 
-from apps.core.models import Business
 
 class GeoapifyService(LocationInterface):
     """all things related to geoapify platform"""
@@ -84,7 +83,7 @@ class GeoapifyService(LocationInterface):
     @classmethod
     def get_routes(
         cls, start_coord: dict, end_coord: Optional[dict] = None,
-        business: Optional[Business] = None, mode: Optional[str] = "walk"
+        business: Optional[Type["Business"]] = None, mode: Optional[str] = "walk"
     ) -> dict:
         """
         gets routes between two coordinates.
@@ -97,8 +96,8 @@ class GeoapifyService(LocationInterface):
             )
         if not end_coord.get("longitude") or not end_coord.get("latitude"):
             end_coord = {
-                "latitude": business._location.y,
-                "longitude": business._location.x
+                "latitude": business.geo_location.y,
+                "longitude": business.geo_location.x
             }
         params = {
             "apiKey": cls.API_KEY,
