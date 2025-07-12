@@ -1,10 +1,13 @@
 import graphene
+import logging
 from graphql_jwt.decorators import login_required
 from django.db import transaction
+
 from apps.core.schema.types.business_types import (
     BusinessType, CreateBusinessInputType, UpdateBusinessInputType,
     BusinessClientCategoryType, CreateClientCategoryInputType,
-    AddClientsToCategoryInputType, CategoryClientType
+    AddClientsToCategoryInputType, CategoryClientType, BusinessTransactionPolicyType,
+    CreateTransactionPolicyInputType
 )
 from apps.wallet.schema.types.wallet import (
     AssetInputType,
@@ -15,6 +18,7 @@ from utils.core_utils.core_utils import CoreUtil
 from utils.wallet_utils.wallet import WalletUtil
 from utils.helpers.exception import CustomException
 
+logger = logging.getLogger("apps.auths")
 
 class CreateBusiness(graphene.Mutation):
     """Creates a new business for the user."""
@@ -120,10 +124,39 @@ class AddClientsToCategory(graphene.Mutation):
         )
 
 
+class CreateTransactionPolicy(graphene.Mutation):
+
+    message = graphene.String()
+    policy = graphene.Field(BusinessTransactionPolicyType)
+
+    class Arguments:
+        business_id = graphene.String(required=True)
+        data = CreateTransactionPolicyInputType(required=True)
+
+    @login_required
+    @transaction.atomic
+    def mutate(self, info, **kwargs):
+        user = info.context.user
+        business_id = kwargs.get("business_id")
+        data = kwargs.get("data")
+        business = BusinessUtil.get_business({"id": business_id, "owner": user})
+        if not business:
+            raise CustomException("Invalid business ID given!")
+        policy = CoreUtil.create_business_txn_policy(
+            business, data
+        )
+        return CreateTransactionPolicy(
+            message="Transaction policy successfully created!",
+            policy=policy
+        )
+
 class Mutation(graphene.ObjectType):
     create_business = CreateBusiness.Field(description="Create a new business for the user.")
     update_business = UpdateBusiness.Field(description="Updates an existing business")
     create_client_category = CreateClientCategory.Field(description="Creates a client category")
     add_clients_to_a_category = AddClientsToCategory.Field(
         description="Adds multiple client to a business category"
+    )
+    create_transaction_policy = CreateTransactionPolicy.Field(
+        description="Creates a transaction policy for the given business"
     )

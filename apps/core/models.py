@@ -45,6 +45,9 @@ class BusinessTransactionPolicy(BaseModel):
         (MEET_UP_AND_STORE_WALK_IN, MEET_UP_AND_STORE_WALK_IN)
     )
     name = models.CharField(max_length=255, null=True)
+    description = models.TextField(
+        null=True, default="General Policy"
+    )
     business = models.ForeignKey(to="Business", on_delete=models.CASCADE, null=True)
     cash_collection_mode = models.CharField(
         max_length=255, null=True, choices=CASH_COLLECTION_CHOICES,
@@ -57,6 +60,11 @@ class BusinessTransactionPolicy(BaseModel):
         verbose_name = "business transaction policy"
         verbose_name_plural = "business transaction policies"
 
+    def __repr__(self):
+        return f"{self.name}->{self.id}"
+
+    def __str__(self):
+        return f"{self.name}->{self.id}"
 
 class BusinessClientCategory(BaseModel):
     """
@@ -75,6 +83,11 @@ class BusinessClientCategory(BaseModel):
         help_text="The transaction policy that applies to the clients in this category"
     )
 
+    def __repr__(self):
+        return f"{self.name}->{self.id}"
+
+    def __str__(self):
+        return f"{self.name}->{self.id}"
 
     class Meta(BaseModel.Meta):
         db_table = "business_client_category"
@@ -103,13 +116,20 @@ class CategoryClient(BaseModel):
             self.business = self.category.business
         super().save(*args, **kwargs)
 
+    def __repr__(self):
+        return f"{self.category} -> {self.client}"
+    
+    def __str__(self):
+        return f"{self.category} -> {self.client}"
+
     class Meta(BaseModel.Meta):
         db_table = "category_client"
-        verbose_name = "category client"
-        verbose_name_plural = "category clients"
+        verbose_name = "client"
+        verbose_name_plural = "clients"
         constraints = [
             models.UniqueConstraint(
                 fields=["business", "client"],
-                name="category_business_client_constraint"
+                name="category_business_client_constraint",
+                violation_error_message="Client already belongs to a category in this business!"
             )
         ]

@@ -24,12 +24,31 @@ class BusinessAdmin(admin.ModelAdmin):
 
 @admin.register(BusinessClientCategory)
 class BusinessClientCategoryAdmin(admin.ModelAdmin):
-    pass
+    list_display = [
+        "id", "name", "description", "business", "txn_policy"
+    ]
+
+    search_fields = [
+        "name", "business__name", "txn_policy__name"
+    ]
+
 
 @admin.register(BusinessTransactionPolicy)
 class BusinessTransactionPolicy(admin.ModelAdmin):
-    pass
+    list_display = [
+        "id", "name", "description", "cash_collection_mode", "meet_up_charge"
+    ]
+    search_fields = [
+        "name", "cash_collection_mode", "meet_up_charge"
+    ]
+
 
 @admin.register(CategoryClient)
 class CategoryClientAdmin(admin.ModelAdmin):
-    pass
+    list_display = [
+        "id", "category", "client", "business"
+    ]
+    search_fields = [
+        "name", "category__name", "client__email", "client__first_name",
+        "client__last_name", "business__name"
+    ]
