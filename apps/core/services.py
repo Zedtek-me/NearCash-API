@@ -7,6 +7,14 @@ from interfaces.general.location import LocationInterface
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
 
+from apps.auths.models import User
+from apps.wallet.models import (
+    Transaction, FinancialAsset
+)
+from apps.wallet.services import WalletService
+
+
+
 
 class GeoapifyService(LocationInterface):
     """all things related to geoapify platform"""
@@ -130,3 +138,100 @@ class OpenCageService(LocationInterface):
         # response = cls._initiate_request(endpoint, params=params)
         # logger.info(f"OpenCage response: {response}")
         # return response
+
+
+class ClientService:
+
+    @classmethod
+    def initiate_transaction(
+        cls, client: User, data: Union[dict, Type["InitiateTransactionInputType"]]
+    ) -> Transaction:
+        """initiates a transaction interest by a client to a vendor"""
+        from utils.wallet_utils.transactions import TransactionUtil
+
+        [
+            asset_id, vendor_id
+        ] = data.get("asset_id"), data.get("vendor_id")
+        fin_asset = WalletService.get_financial_asset(
+            raise_exc=True, id=asset_id, business__id=vendor_id
+        )
+        txn_data: dict = cls._validate_txn_data(
+            data, client, fin_asset
+        )
+        txn = TransactionUtil.create_transaction(**txn_data)
+        return txn
+        # TODO: 1. Contact the vendor via websocket, sms and email to confirm the transaction
+        #
+
+    @classmethod
+    def _validate_withdrawal_amount(
+        cls, asset, amount_to_withdraw: float
+    ) -> bool:
+        """
+        validates that the amount to withdraw is
+        within the range of the financial asset.
+        """
+        min_amount, max_amount = asset.range.split("-")
+        min_amount, max_amount = float(min_amount), float(max_amount)
+        if not (min_amount <= amount_to_withdraw <= max_amount):
+            return False
+        return True
+
+    @classmethod
+    def prepare_client_txn_data(
+        cls, client: User, data: Union[dict, Type["InitiateTransactionInputType"]],
+        asset: FinancialAsset, **kwargs
+    ) -> dict:
+        """prepares a dict of data to create a transaction"""
+        from utils.wallet_utils.transactions import TransactionUtil
+
+        txn_ref = TransactionUtil.generate_txn_reference()
+        txn_data = {
+            "txn_ref": txn_ref,
+            "client": client,
+            "vendor": (asset.busniess and asset.business.owner) or None,
+            "asset": asset,
+            "amount": data.get("amount_to_withdraw"),
+            "charge": asset.charge_rate,
+            "currency": asset.currency_code,
+            "business": asset.business,
+            "collection_mode": data.get("collection_mode"),
+            "extra_charge": kwargs.get("extra_charge", {}),
+            "txn_location": data.get("collection_location"),
+            "description": f"Withdrawal transaction initiated by {client.email}.",
+            "category": "client_cash_withdrawal",
+        }
+        return txn_data
+
+    @classmethod
+    def _validate_txn_data(
+        cls, data: Union[dict, Union[dict, Type["InitiateTransactionInputType"]]],
+        client: User, asset: FinancialAsset
+    ) -> Optional[dict]:
+        """validates all transaction data"""
+        from utils.core_utils.business_utils import BusinessUtil
+        from apps.core.constants import MEET_UP
+
+        txn_policy = BusinessUtil.fetch_business_txn_policy_for_current_client(
+            client, asset.business.id
+        )
+        amount_to_withdraw = data.get("amount_to_withdraw")
+        cash_collection_mode = data.get("collection_mode").value
+        extra_charge = 0.0
+        if not cls._validate_withdrawal_amount(asset, amount_to_withdraw):
+            raise CustomException(
+                message=f"Amount to withdraw {amount_to_withdraw} is not within the range of the selected asset: {asset.range}."
+            )
+        if txn_policy and cash_collection_mode in txn_policy.cash_collection_mode:
+            raise CustomException(
+                message=f"This vendor doesn't support the chosen collection mode {cash_collection_mode}."
+            )
+        if cash_collection_mode == MEET_UP:
+            extra_charge = (txn_policy and txn_policy.meet_up_charge) or 0.0
+        extra_charge_data = {
+            "amount": extra_charge,
+            "reason": "meet up charge"
+        }
+        return cls.prepare_client_txn_data(
+            client, data, asset, extra_charge=extra_charge_data
+        )

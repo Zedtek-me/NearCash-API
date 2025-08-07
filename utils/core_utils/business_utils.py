@@ -9,7 +9,12 @@ from apps.core.models import (
     Business, BusinessTransactionPolicy,
     BusinessClientCategory, CategoryClient
 )
+
+from apps.core.services import ClientService
+
+
 from apps.core.constants import LOCATION_SERVICES
+from apps.wallet.models import Transaction
 
 from utils.helpers.logs import logger
 from utils.core_utils.location_utils import GeolocationUtils
@@ -135,3 +140,11 @@ class BusinessUtil:
         return CoreUtil.fetch_business_txn_policy(
             business_id, {"name__iexact": "general"}
         )
+
+    @classmethod
+    def initiate_transaction(
+        cls, client: User, data: dict,
+    ) -> Transaction:
+        """client initiates transaction to a vendor"""
+        txn = ClientService.initiate_transaction(client, data)
+        return txn
