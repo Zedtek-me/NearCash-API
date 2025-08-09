@@ -16,3 +16,9 @@ class TransactionUtil:
     ) -> Transaction:
         """records and returns a transaction"""
         return Transaction.objects.create(**txn_data)
+
+    @classmethod
+    def get_transaction(
+        cls, **_filter
+    ) -> Transaction:
+        return Transaction.objects.filter(**_filter).first()

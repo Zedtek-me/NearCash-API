@@ -20,6 +20,7 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
     is_superuser = models.BooleanField(default=False)
     password = models.CharField(max_length=128, null=True)
     status = models.CharField(max_length=20, default='ACTIVE', choices=STATUSES)
+    _channel = models.CharField(max_length=255, null=True)
 
     objects = UserManager(active=True)
     all_objects = UserManager(active=False)
@@ -34,6 +35,18 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.first_name} -> {self.last_name} -> ({self.email})"
+
+    @property
+    def user_queue(self):
+        """gets the user channel name"""
+        return self._channel
+
+
+    @user_queue.setter
+    def user_queue(self, value: str):
+        """Sets the user channel name."""
+        self._channel = value
+        self.save()
 
 
 class SocialToken(BaseModel):
@@ -65,4 +78,3 @@ class SocialToken(BaseModel):
         if return_all:
             return instances
         return instances.first()
-

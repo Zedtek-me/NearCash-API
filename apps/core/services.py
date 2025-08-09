@@ -16,6 +16,7 @@ from apps.wallet.services import WalletService
 
 
 
+
 class GeoapifyService(LocationInterface):
     """all things related to geoapify platform"""
     BASE_URL = settings.GEOAPIFY_BASE_URL
@@ -148,6 +149,8 @@ class ClientService:
     ) -> Transaction:
         """initiates a transaction interest by a client to a vendor"""
         from utils.wallet_utils.transactions import TransactionUtil
+        from background_tasks.core.business import BusinessAsyncOperations
+
 
         [
             asset_id, vendor_id
@@ -159,9 +162,8 @@ class ClientService:
             data, client, fin_asset
         )
         txn = TransactionUtil.create_transaction(**txn_data)
+        BusinessAsyncOperations.notify_vendor_about_transaction.delay(txn_id=txn.id)
         return txn
-        # TODO: 1. Contact the vendor via websocket, sms and email to confirm the transaction
-        #
 
     @classmethod
     def _validate_withdrawal_amount(
@@ -222,7 +224,7 @@ class ClientService:
             raise CustomException(
                 message=f"Amount to withdraw {amount_to_withdraw} is not within the range of the selected asset: {asset.range}."
             )
-        if txn_policy and cash_collection_mode in txn_policy.cash_collection_mode:
+        if txn_policy and cash_collection_mode not in txn_policy.cash_collection_mode:
             raise CustomException(
                 message=f"This vendor doesn't support the chosen collection mode {cash_collection_mode}."
             )
