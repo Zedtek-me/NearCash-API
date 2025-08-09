@@ -5,6 +5,7 @@ from apps.auths.schema.mutations.user_mutations import Mutation as UserMutation
 from apps.wallet.schema.mutations.wallet import Mutation as WalletMutation
 from apps.wallet.schema.queries.wallet import Query as WalletQuery
 from apps.core.schema.mutations.business_mutations import Mutation as BusinessMutation
+from apps.core.schema.mutations.client_mutations import Mutation as ClientMutation
 from apps.core.schema.queries.business_queries import Query as BusinessQuery
 
 class RootQuery(
@@ -23,6 +24,7 @@ class RootMutation(
     UserMutation,
     WalletMutation,
     BusinessMutation,
+    ClientMutation,
     ObjectType
 ):
     """

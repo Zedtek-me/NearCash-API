@@ -5,7 +5,7 @@ from interfaces.models.base import BaseModel
 from utils.helpers.validators import Validator
 
 from .constants import (
-    COLLECTION_MODES, IN_PROGRESS, CANCELLED,
+    COLLECTION_MODES, IN_PROGRESS, CANCELLED, INITIATED,
     FULFILLED, MEET_UP, STORE_WALK_IN, TXN_STATUSES
 )
 
@@ -19,6 +19,9 @@ class FinancialAsset(BaseModel):
     )
     charge_rate = models.FloatField(
         null=True, default=100.0, validators=[Validator.validate_number]
+    )
+    currency_code = models.CharField(
+        max_length=20, default="NGN", help_text="Currency code for the asset",
     )
 
     class Meta:
@@ -61,7 +64,7 @@ class Transaction(BaseModel):
         help_text="Should contain amount and reason keys for the extra charge"
     )
     status = models.CharField(
-        max_length=255, choices=TXN_STATUSES, default=IN_PROGRESS, db_index=True
+        max_length=255, choices=TXN_STATUSES, default=INITIATED, db_index=True
     )
     description = models.TextField(null=True)
     category = models.CharField(

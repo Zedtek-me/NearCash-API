@@ -5,6 +5,10 @@ from apps.wallet.models import (
     Wallet, FinancialAsset, Transaction
 )
 
+from apps.core.schema.types.business_types import (
+    PointFieldType, CashCollectionModes
+)
+
 
 class FinancialAssetType(DjangoObjectType):
     class Meta:
@@ -28,3 +32,12 @@ class AssetInputType(graphene.InputObjectType):
     """
     range = graphene.String(required=True)
     charge_rate = graphene.Float(required=True)
+
+
+class InitiateTransactionInputType(graphene.InputObjectType):
+    vendor_id = graphene.String(required=True)
+    asset_id = graphene.String(required=True)
+    amount_to_withdraw = graphene.Float(required=True)
+    client_current_coordinates = PointFieldType(required=True)
+    collection_mode = CashCollectionModes(required=True)
+    collection_location = graphene.String(required=False)

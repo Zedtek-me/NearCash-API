@@ -1,3 +1,3 @@
 import logging
 
-logger = logging.getLogger('apps.auths')
+logger = logging.getLogger('nearcash')

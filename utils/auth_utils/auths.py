@@ -47,7 +47,7 @@ class AuthUtils:
             user = User.objects.filter(email__iexact=email).first()
             if not user:
                 raise Exception("Invalid authentication credentials. Please sign up if you don't have an account!")
-            if (user and not user.check_password(password) and not skip_pass_check):
+            if (user and password and not user.check_password(password) and not skip_pass_check):
                 raise Exception("Invalid authentication credentials!")
             token = cls.generate_user_local_auth_tokens(user)
             return [user, token]

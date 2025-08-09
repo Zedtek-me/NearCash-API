@@ -34,6 +34,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
     "apps.auths",
     "apps.core",
     "apps.wallet",
+    "apps.notification",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -88,6 +90,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'near_cash.wsgi.application'
+ASGI_APPLICATION = 'near_cash.asgi.application'
 
 
 # Database
@@ -171,7 +174,7 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'INFO',
         },
-        'apps.auths': {
+        'nearcash': {
             'handlers': ['console'],
             'level': 'DEBUG',
         },
@@ -182,3 +185,18 @@ GOOGLE_REDIRECT_URI = config("GOOGLE_REDIRECT_URI", cast=str, default='http://lo
 
 GEOAPIFY_BASE_URL = config("GEOAPIFY_BASE_URL", cast=str, default='https://api.geoapify.com/v1')
 GEOAPIFY_API_KEY = config("GEOAPIFY_API_KEY", cast=str, default='your_geoapify_api_key')
+
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)],
+        },
+    },
+}
+
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", cast=str, default='amqp://user:password@rabbitmq:5672//')
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", cast=str, default='redis://redis:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'

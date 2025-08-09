@@ -18,7 +18,7 @@ from utils.core_utils.core_utils import CoreUtil
 from utils.wallet_utils.wallet import WalletUtil
 from utils.helpers.exception import CustomException
 
-logger = logging.getLogger("apps.auths")
+logger = logging.getLogger("nearcash")
 
 class CreateBusiness(graphene.Mutation):
     """Creates a new business for the user."""

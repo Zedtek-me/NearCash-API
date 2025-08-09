@@ -13,7 +13,7 @@ from apps.auths.models import User
 
 from utils.helpers.exception import CustomException
 
-logger = logging.getLogger("apps.auths")
+logger = logging.getLogger("nearcash")
 logger.setLevel(logging.DEBUG)
 
 
