@@ -33,7 +33,6 @@ class EmailService:
         return email
 
 
-    @shared_task(bind=True, name="send.email")
     def send_email(self, **kwargs: EmailArgsDto) -> None:
         mail = self.construct_message(**kwargs)
         status_int = mail.send(False)
@@ -63,3 +62,10 @@ class EmailService:
                     mimetype=attachment.get("mimetype")
                 )
         return email
+
+    @shared_task(name="send.email")
+    def send_mail_async(self, **kwargs: EmailArgsDto) -> None:
+        """
+        pushes email sending to the background
+        """
+        self.send_email(**kwargs)

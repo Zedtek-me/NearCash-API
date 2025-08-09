@@ -30,17 +30,20 @@ class BusinessAsyncOperations:
         vendor: User | None = txn.vendor
         if not vendor:
             return False
-        notification_data = {
-            "type": "send.notification",
-            "data": {
-                "title": "New Transaction Interest",
-                "txn_info": {
+
+        txn_info = {
                     "txn_ref": txn.txn_ref,
                     "client_id": txn.client.id,
                     "amount": txn.amount,
                     "client_current_location": txn.client.current_location,
                     "mode": txn.collection_mode,
                 }
+
+        notification_data = {
+            "type": "send.notification",
+            "data": {
+                "title": "New Transaction Interest",
+                "txn_info": txn_info
             }
         }
         async_to_sync(
@@ -48,3 +51,4 @@ class BusinessAsyncOperations:
         )(
             vendor.user_queue, notification_data
         )
+        # EmailService.send_email()
