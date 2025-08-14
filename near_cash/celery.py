@@ -21,10 +21,10 @@ class BaseTask(Task):
 
 app = Celery(
     'near_cash', 
-    include=["background_tasks"],
+    include=["background_tasks.core.business", "background_tasks.wallet"],
     task_cls=BaseTask,
     namespace="CELERY"
 )
 
-app.config_from_object("django.conf:settings")
+app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()

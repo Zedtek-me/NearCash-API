@@ -143,7 +143,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Lagos'
 
 USE_I18N = True
 
@@ -196,7 +196,7 @@ CHANNEL_LAYERS = {
     },
 }
 
-CELERY_BROKER_URL = config("CELERY_BROKER_URL", cast=str, default='amqp://user:password@rabbitmq:5672//')
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", cast=str, default='amqp://guest:guest@rabbitmq:5672//')
 CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", cast=str, default='redis://redis:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'

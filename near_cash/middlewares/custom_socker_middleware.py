@@ -1,3 +1,5 @@
+import logging
+
 import jwt
 from utils.helpers.logs import logger
 from typing import Tuple
@@ -6,6 +8,9 @@ from channels.db import database_sync_to_async
 from asgiref.sync import async_to_sync
 
 from django.contrib.auth.models import AnonymousUser
+
+logger = logging.getLogger("nearcash")
+logger.setLevel(logging.DEBUG)
 
 
 class CustomSocketAuthMiddleware:
@@ -20,9 +25,15 @@ class CustomSocketAuthMiddleware:
         headers = self.scope.get("headers", [])
         headers = self._parse_headers(headers)
         auth_token = headers.get("authorization")
-        if not auth_token:
+        query_strings = self.scope.get("query_string", b"")
+        parsed_query_strings = self._parse_query_strings(query_strings)
+        token_in_query = parsed_query_strings.get("token")
+        if not auth_token and not token_in_query:
             self._set_anonymous_user()
-        await self._populate_scope(self.scope, auth_token)
+        if auth_token:
+            await self._populate_scope(self.scope, auth_token)
+        elif token_in_query:
+            await self._populate_scope(self.scope, token_in_query, from_query=True)
         return await self.app(scope, receive, send)
 
 
@@ -46,17 +57,35 @@ class CustomSocketAuthMiddleware:
         return formatted_headers
 
 
-    async def _populate_scope(self, scope, auth_token: str) -> None:
+    async def _populate_scope(self, scope, auth_token: str, **kwargs) -> None:
         from apps.auths.models import User
 
-        _, token = auth_token.split(" ")
+        if not kwargs.get("from_query", False):
+            _, token = auth_token.split(" ")
+        else:
+            token = auth_token
         decoded_payload = jwt_decode(token)
         email = decoded_payload.get("email")
         user = await database_sync_to_async(User.objects.filter(email__iexact=email).first)()
         if not user:
             self._set_anonymous_user()
+            return
         scope["user"] = user
         scope["auth_token"] = token
 
     def _set_anonymous_user(self):
         self.scope["user"] = AnonymousUser()
+
+
+    def _parse_query_strings(self, byte_query: bytes) -> dict:
+        """formats query params as dict"""
+        query_str = byte_query.decode("utf-8")
+        queries = query_str.split("&")
+        formatted = {}
+        for query in queries:
+            if "=" not in query:
+                continue
+            key, value = query.split("=", 1)
+            if key and value:
+                formatted[key] = value
+        return formatted

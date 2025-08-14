@@ -5,12 +5,13 @@ from asgiref.sync import async_to_sync
 
 from utils.helpers.logs import logger
 
+from near_cash.celery import app
+
 class BusinessAsyncOperations:
 
-    @shared_task
-    @classmethod
+    @shared_task(bind=True, name="notify_vendor_about_transaction")
     def notify_vendor_about_transaction(
-        cls, txn_id: str | int, **kwargs
+        self, txn_id: str | int, **kwargs
     ) -> bool:
         """
         Notifies the merchant of a client's txn interest.
@@ -35,20 +36,25 @@ class BusinessAsyncOperations:
                     "txn_ref": txn.txn_ref,
                     "client_id": txn.client.id,
                     "amount": txn.amount,
-                    "client_current_location": txn.client.current_location,
+                    "client_current_location": txn.meta.get("client_current_location", {}),
                     "mode": txn.collection_mode,
                 }
 
         notification_data = {
             "type": "send.notification",
-            "data": {
+            "message": {
                 "title": "New Transaction Interest",
                 "txn_info": txn_info
             }
         }
-        async_to_sync(
+        logger.debug(f"about to send websocket notification to vendor: {vendor.email} with data: {notification_data}")
+        try:
+            async_to_sync(
             channel_layer.send
-        )(
-            vendor.user_queue, notification_data
-        )
+            )(
+                vendor.user_queue, notification_data
+            )
+        except Exception as e:
+            logger.exception(f"exception while sending websocket notification: {e}")
+            raise e
         # EmailService.send_email()
