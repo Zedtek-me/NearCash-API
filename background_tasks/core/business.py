@@ -47,14 +47,10 @@ class BusinessAsyncOperations:
                 "txn_info": txn_info
             }
         }
-        logger.debug(f"about to send websocket notification to vendor: {vendor.email} with data: {notification_data}")
-        try:
-            async_to_sync(
-            channel_layer.send
-            )(
-                vendor.user_queue, notification_data
-            )
-        except Exception as e:
-            logger.exception(f"exception while sending websocket notification: {e}")
-            raise e
+
+        async_to_sync(
+        channel_layer.send
+        )(
+            vendor.user_queue, notification_data
+        )
         # EmailService.send_email()
