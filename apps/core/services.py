@@ -173,6 +173,7 @@ class ClientService:
         validates that the amount to withdraw is
         within the range of the financial asset.
         """
+        logger.debug(f"asset: {asset}\n\n asset range: {asset.range}, amount to withdraw: {amount_to_withdraw}")
         min_amount, max_amount = asset.range.split("-")
         min_amount, max_amount = float(min_amount), float(max_amount)
         if not (min_amount <= amount_to_withdraw <= max_amount):
@@ -191,17 +192,23 @@ class ClientService:
         txn_data = {
             "txn_ref": txn_ref,
             "client": client,
-            "vendor": (asset.busniess and asset.business.owner) or None,
+            "vendor": (asset.business and asset.business.owner) or None,
             "asset": asset,
             "amount": data.get("amount_to_withdraw"),
             "charge": asset.charge_rate,
             "currency": asset.currency_code,
             "business": asset.business,
-            "collection_mode": data.get("collection_mode"),
+            "collection_mode": data.get("collection_mode").value,
             "extra_charge": kwargs.get("extra_charge", {}),
             "txn_location": data.get("collection_location"),
             "description": f"Withdrawal transaction initiated by {client.email}.",
             "category": "client_cash_withdrawal",
+            "meta": {
+                "client_current_location": {
+                    "longitude": data.get("client_current_coordinates").x,
+                    "latitude": data.get("client_current_coordinates").y
+                }
+            }
         }
         return txn_data
 

@@ -10,7 +10,7 @@ class WalletAdmin(admin.ModelAdmin):
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'txn_ref', 'wallet_id', 'charge', 'extra_charge', 'vendor', 'client', 'date_created',
+        'id', 'txn_ref', 'wallet_id', 'amount', 'charge', 'extra_charge', 'vendor', 'client', 'date_created',
         'last_updated', 'status', 'collection_mode', 'status', 'description', 'txn_location',
         'discounted'
     )

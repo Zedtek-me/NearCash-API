@@ -62,6 +62,26 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: near-cash-celery-worker
+    container_name: near-cash-celery-worker
+    hostname: near-cash-celery-worker
+    entrypoint: celery -A near_cash.celery worker --loglevel=info -E
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - rabbitmq
+      - database
+    networks:
+      - near-cash-network
+    volumes:
+      - .:/app
+    restart: always
+
 volumes:
   postgres_data:
   redis_data:
