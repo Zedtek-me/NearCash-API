@@ -4,6 +4,9 @@ from graphene_django import DjangoObjectType
 from apps.wallet.models import (
     Wallet, FinancialAsset, Transaction
 )
+from apps.wallet.constants import (
+    IN_PROGRESS, INITIATED, DECLINED, CANCELLED
+)
 
 from apps.core.schema.types.business_types import (
     PointFieldType, CashCollectionModes
@@ -41,3 +44,10 @@ class InitiateTransactionInputType(graphene.InputObjectType):
     client_current_coordinates = PointFieldType(required=True)
     collection_mode = CashCollectionModes(required=True)
     collection_location = graphene.String(required=False)
+
+
+class TxnStatusType(graphene.Enum):
+    IN_PROGRESS = IN_PROGRESS
+    CANCELLED = CANCELLED
+    DECLINED = DECLINED
+    INITIATED = INITIATED

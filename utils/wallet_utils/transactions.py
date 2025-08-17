@@ -27,3 +27,12 @@ class TransactionUtil:
         if only_one:
             return txns.first()
         return txns
+
+    @classmethod
+    def update_txn_status(
+        cls, user, data
+    ) -> Transaction:
+        """
+        updates txn status and publish notification accordingly, if needed --
+        depending on the status type.
+        """
