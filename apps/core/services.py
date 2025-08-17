@@ -173,7 +173,6 @@ class ClientService:
         validates that the amount to withdraw is
         within the range of the financial asset.
         """
-        logger.debug(f"asset: {asset}\n\n asset range: {asset.range}, amount to withdraw: {amount_to_withdraw}")
         min_amount, max_amount = asset.range.split("-")
         min_amount, max_amount = float(min_amount), float(max_amount)
         if not (min_amount <= amount_to_withdraw <= max_amount):
@@ -240,7 +239,7 @@ class ClientService:
         extra_charge_data = {
             "amount": extra_charge,
             "reason": "meet up charge"
-        }
+        } if extra_charge > 0 else {}
         return cls.prepare_client_txn_data(
             client, data, asset, extra_charge=extra_charge_data
         )

@@ -5,7 +5,7 @@ from django.db import transaction
 
 from apps.core.models import (
     Business, BusinessTransactionPolicy,
-    BusinessClientCategory, CategoryClient
+    BusinessClientCategory, BusinessClient
 )
 from apps.core.schema.types.business_types import CashCollectionModes
 
@@ -82,14 +82,18 @@ class CoreUtil:
         cls, user: User, data: Union[
             Type["AddClientToCategoryInputType"], dict
         ]
-    ) -> List[CategoryClient]:
+    ) -> List[BusinessClient]:
         """adds a client to a business category"""
+        from utils.core_utils.business_utils import BusinessUtil
+
         category_id = data.get("category_id")
         client_ids = data.get("client_ids")
+        business_id = data.get("business_id")
+        business = BusinessUtil.get_business({"id": business_id})
         clients = User.objects.filter(id__in=client_ids)
         db_category_clients = []
         category = BusinessClientCategory.objects.filter(
-            id=category_id, business__owner=user
+            id=category_id, business__owner=user, business=business
         ).first()
         if not category:
             raise CustomException(
@@ -100,10 +104,59 @@ class CoreUtil:
                 message=f"Invalid client IDs: {client_ids}"
             )
         for client_user in clients:
+            if existing_client := BusinessClient.objects.filter(
+                client=client_user, business=business
+            ).first():
+                existing_client.category = category
+                existing_client.save()
+                db_category_clients.append(existing_client)
+                continue
+
             db_category_clients.append(
-                CategoryClient.objects.create(
+                BusinessClient.objects.create(
                     category=category,
-                    client=client_user
+                    client=client_user,
+                    business=business
                 )
             )
         return db_category_clients
+
+
+    @classmethod
+    def get_or_create_user_as_business_client(
+        cls, client: User, business: Business, category: Optional[BusinessClientCategory] = None
+    ) -> BusinessClient:
+        """creates a user as a client for the given business"""
+        if existing_client := BusinessClient.objects.filter(
+            client=client, business=business
+        ).first():
+            return existing_client
+        return BusinessClient.objects.create(
+            client=client, category=category,
+            business=business
+        )
+
+
+    @classmethod
+    def get_business_clients(
+        cls, user: User, data: dict
+    ) -> BusinessClient:
+        """
+        returns clients that have patronized a business.
+        """
+        from apps.wallet.models import Transaction
+        from utils.wallet_utils.transactions import TransactionUtil
+        from utils.core_utils.business_utils import BusinessUtil
+
+        business_id = data.get("business_id")
+        category_id = data.get("category_id")
+        business_filter = {"id": business_id}
+        if not business_id:
+            client_ids = user.vendor_transactions.values_list("client_id", flat=True)
+            return BusinessClient.objects.filter(client__id__in=client_ids).distinct()
+        business = BusinessUtil.get_business(business_filter)
+        client_ids = business.transactions.values_list("client_id", flat=True)
+        clients = BusinessClient.objects.filter(client__id__in=client_ids).distinct()
+        if category_id:
+            clients = clients.filter(category__id=category_id)
+        return clients

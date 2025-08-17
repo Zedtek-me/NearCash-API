@@ -19,6 +19,11 @@ class TransactionUtil:
 
     @classmethod
     def get_transaction(
-        cls, **_filter
+        cls, only_one: bool = True, **_filter
     ) -> Transaction:
-        return Transaction.objects.filter(**_filter).first()
+        txns = Transaction.objects.filter(**_filter).select_related(
+            "client", "vendor", "asset", "business"
+        )
+        if only_one:
+            return txns.first()
+        return txns

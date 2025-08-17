@@ -7,7 +7,7 @@ from django.db.models import Q
 from apps.auths.models import User
 from apps.core.models import (
     Business, BusinessTransactionPolicy,
-    BusinessClientCategory, CategoryClient
+    BusinessClientCategory, BusinessClient
 )
 
 from apps.core.services import ClientService
@@ -111,7 +111,6 @@ class BusinessUtil:
             coordinates = GeolocationUtils(geoapify_service).get_coordinate(
                 updated_address, country_code="ng"
             )
-            logger.debug(f"new coordinates for business {business.name}, {coordinates}")
             business.geo_location = Point(
                 coordinates.get("longitude", 0),
                 coordinates.get("latitude", 0), srid=4326
@@ -130,13 +129,16 @@ class BusinessUtil:
         if client doesn't belong to any business txn category,
         the default txn policy for the business is used
         """
-        if existing_client_category := CategoryClient.objects.filter(
+        if existing_business_client := BusinessClient.objects.filter(
             (
                 Q(category__business__id=business_id) |
                 Q(business__id=business_id)
             ), client=client
         ).first():
-            return existing_client_category.txn_policy
+            return (
+                existing_business_client.category and
+                existing_business_client.category.txn_policy
+            ) or CoreUtil.fetch_business_txn_policy(business_id, {"name__iexact": "general"})
         return CoreUtil.fetch_business_txn_policy(
             business_id, {"name__iexact": "general"}
         )

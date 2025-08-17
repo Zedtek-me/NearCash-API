@@ -4,7 +4,7 @@ from django.contrib.gis.geos import Point
 from graphene_django import DjangoObjectType
 from apps.core.models import (
     Business, BusinessClientCategory, BusinessTransactionPolicy,
-    CategoryClient
+    BusinessClient
 )
 from apps.core.constants import (
     MEET_UP, STORE_WALK_IN, MEET_UP_AND_STORE_WALK_IN
@@ -54,9 +54,9 @@ class BusinessTransactionPolicyType(DjangoObjectType):
         model = BusinessTransactionPolicy
         fields = "__all__"
 
-class CategoryClientType(DjangoObjectType):
+class BusinessClientType(DjangoObjectType):
     class Meta:
-        model = CategoryClient
+        model = BusinessClient
         fields = "__all__"
 
 
@@ -84,6 +84,7 @@ class CreateClientCategoryInputType(graphene.InputObjectType):
 class AddClientsToCategoryInputType(graphene.InputObjectType):
     client_ids = graphene.List(graphene.String, required=True)
     category_id = graphene.String(required=True)
+    business_id = graphene.String(required=True)
 
 class CashCollectionModes(graphene.Enum):
     MEET_UP = MEET_UP

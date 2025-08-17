@@ -6,9 +6,11 @@ from django.db.models import Q, F
 from apps.core.models import Business
 from apps.core.schema.types.business_types import (
     BusinessType, RouteInputType, BusinessTransactionPolicyType,
-    CashCollectionModes
+    CashCollectionModes, BusinessClientType
 )
 from apps.core.constants import LOCATION_SERVICES
+
+from apps.auths.schema.types.auth_types import UserType
 
 from utils.core_utils.business_utils import BusinessUtil, GeolocationUtils
 from utils.core_utils.core_utils import CoreUtil
@@ -59,6 +61,13 @@ class Query(graphene.ObjectType):
     business_transaction_policy = graphene.Field(
         BusinessTransactionPolicyType, id=graphene.String(required=True),
         business_id=graphene.String(required=True)
+    )
+    business_clients = graphene.List(
+        BusinessClientType,
+        category_id=graphene.String(),
+        business_id=graphene.String(),
+        page_count=graphene.Int(default_value=10),
+        page_number=graphene.Int(default_value=1)
     )
 
 
@@ -169,6 +178,22 @@ class Query(graphene.ObjectType):
         _id = kwargs.get("id")
         business_id = kwargs.get("business_id")
         return CoreUtil.fetch_business_txn_policy(business_id, {"id": _id})
+
+    @login_required
+    def resolve_business_clients(self, info, **kwargs):
+        """
+        returns clients that have patronized a business.
+        """
+        user = info.context.user
+        page_count = kwargs.pop("page_count", 10)
+        page_number = kwargs.pop("page_number", 1)
+        clients = CoreUtil.get_business_clients(user, kwargs)
+
+        paginated = PaginationUtil.paginate(
+            clients, page_number=page_number, page_size=page_count
+        )
+        Query.pagination = paginated
+        return paginated.pop("items")
 
     @login_required
     def resolve_pagination(
