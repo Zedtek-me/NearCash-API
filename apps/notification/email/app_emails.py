@@ -18,16 +18,18 @@ class EmailService:
 
     def construct_message(
         self, subject: str, body: str, recipients: list,
-        context: dict | None = None, attachments: list | None = None
+        context: dict | None = None, attachments: list | None = None, **kwargs
     ) -> EmailMessage:
         """Constructs an email message."""
-        body = self._parse_msg_body(body, context=context)
+        body = self._parse_msg_body(body, context=context, **kwargs)
         email = EmailMessage(
             from_email=settings.DEFAULT_FROM_EMAIL,
             subject=subject,
             body=body,
             to=recipients
         )
+        if not kwargs.get("raw"):
+            email.content_subtype = "html"
         if attachments:
             self._update_email(email, attachments=attachments)
         return email
