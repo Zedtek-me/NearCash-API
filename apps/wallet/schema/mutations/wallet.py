@@ -3,12 +3,14 @@ from graphql_jwt.decorators import login_required
 from django.db import transaction
 
 from apps.wallet.schema.types.wallet import (
-    AssetInputType, FinancialAssetType
+    AssetInputType, FinancialAssetType,
+    TransactionType, TxnStatusType
 )
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
 from utils.wallet_utils.wallet import WalletUtil
+from utils.wallet_utils.transactions import TransactionUtil
 
 
 class CreateFinancialAsset(graphene.Mutation):
@@ -63,6 +65,30 @@ class UpdateFinancialAsset(graphene.Mutation):
     def mutate(self, info, **kwargs):
         """updates existing asset with new values"""
 
+class UpdateTxnStatus(graphene.Mutation):
+    """
+    allows both the client and the vendor update a txn status
+    either accept, decline or reject.
+    """
+
+    message = graphene.String()
+    transaction = graphene.Field(TransactionType)
+
+    class Arguments:
+        txn_id = graphene.String(required=True)
+        status = TxnStatusType(required=True)
+
+    @login_required
+    def mutate(self, info, **kwargs):
+        """update txn"""
+
+        txn = TransactionUtil.update_txn_status(
+            info.context.user, kwargs
+        )
+        return UpdateTxnStatus(
+            message="Transaction successfully updated!",
+            transaction=txn
+        )
 
 class Mutation(graphene.ObjectType):
     create_financial_asset = CreateFinancialAsset.Field(
@@ -70,4 +96,7 @@ class Mutation(graphene.ObjectType):
     )
     update_financial_asset = UpdateFinancialAsset.Field(
         description="Update an existing financial asset."
+    )
+    update_transaction_status = UpdateTxnStatus.Field(
+        description="Updates a transaction status, and publish notification if needed"
     )
