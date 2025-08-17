@@ -6,7 +6,7 @@ from django.db import transaction
 from apps.core.schema.types.business_types import (
     BusinessType, CreateBusinessInputType, UpdateBusinessInputType,
     BusinessClientCategoryType, CreateClientCategoryInputType,
-    AddClientsToCategoryInputType, CategoryClientType, BusinessTransactionPolicyType,
+    AddClientsToCategoryInputType, BusinessClientType, BusinessTransactionPolicyType,
     CreateTransactionPolicyInputType
 )
 from apps.wallet.schema.types.wallet import (
@@ -105,7 +105,7 @@ class CreateClientCategory(graphene.Mutation):
 
 class AddClientsToCategory(graphene.Mutation):
     message = graphene.String()
-    category_clients = graphene.List(CategoryClientType)
+    category_clients = graphene.List(BusinessClientType)
 
     class Arguments:
         data = AddClientsToCategoryInputType(required=True)

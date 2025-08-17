@@ -30,7 +30,7 @@ class Business(BaseModel):
         geography=True, srid=4326
     )
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         db_table = 'business'
         verbose_name = "Business"
         verbose_name_plural = "Businesses"
@@ -61,10 +61,10 @@ class BusinessTransactionPolicy(BaseModel):
         verbose_name_plural = "business transaction policies"
 
     def __repr__(self):
-        return f"{self.name}->{self.id}"
+        return f"{self.name}->{self.id}{'->' + str(self.business) if self.business else ''}"
 
     def __str__(self):
-        return f"{self.name}->{self.id}"
+        return f"{self.name}->{self.id}{'->' + str(self.business) if self.business else ''}"
 
 class BusinessClientCategory(BaseModel):
     """
@@ -95,21 +95,22 @@ class BusinessClientCategory(BaseModel):
         verbose_name_plural = "category for clients"
 
 
-class CategoryClient(BaseModel):
+class BusinessClient(BaseModel):
     """
-    A client can be added to multiple category as long as
-    the business that owns the categories differs; i.e,
-    a client can't be added to multiple categories in the same business.
+    Records all clients that have patronized businesses.
+    Clients could be added to a category within a business, in order
+    to apply a different policy to that category.
     """
     category = models.ForeignKey(
-        to="BusinessClientCategory", on_delete=models.CASCADE, null=True,
+        to="BusinessClientCategory", on_delete=models.SET_NULL, null=True,
         help_text="category this client belongs to"
     )
     client = models.ForeignKey(
         to="auths.User", on_delete=models.CASCADE, null=True,
         help_text="The actual client added to this category"
     )
-    business = models.ForeignKey(to="Business", on_delete=models.SET_NULL, null=True)
+    business = models.ForeignKey(to="Business", on_delete=models.CASCADE, null=True)
+    last_patronized = models.DateTimeField(null=True)
 
     def save(self, *args, **kwargs):
         if self.category and not self.business:
@@ -117,19 +118,19 @@ class CategoryClient(BaseModel):
         super().save(*args, **kwargs)
 
     def __repr__(self):
-        return f"{self.category} -> {self.client}"
+        return f"{self.business} -> {self.client}"
 
     def __str__(self):
-        return f"{self.category} -> {self.client}"
+        return f"{self.business} -> {self.client}"
 
     class Meta(BaseModel.Meta):
-        db_table = "category_client"
-        verbose_name = "client"
-        verbose_name_plural = "clients"
+        db_table = "business_client"
+        verbose_name = "business client"
+        verbose_name_plural = "business clients"
         constraints = [
             models.UniqueConstraint(
                 fields=["business", "client"],
                 name="category_business_client_constraint",
-                violation_error_message="Client already belongs to a category in this business!"
+                violation_error_message="Client is already a patron of this business!"
             )
         ]

@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from .models import (
     Business, BusinessTransactionPolicy, BusinessClientCategory,
-    CategoryClient
+    BusinessClient
 )
 
 @admin.register(Business)
@@ -12,8 +12,9 @@ class BusinessAdmin(admin.ModelAdmin):
         'parent_business_id'
     )
     search_fields = (
-        'name', 'owner__email', 'owner__username', 'owner__first_name', 'owner__last_name',
-        'country', 'currency'
+        'name__icontains', 'owner__email__iexact', 'owner__username__icontains',
+        'owner__first_name__icontains', 'owner__last_name__icontains',
+        'country__icontains', 'currency'
     )
     list_filter = ('date_created', 'last_updated')
 
@@ -36,19 +37,19 @@ class BusinessClientCategoryAdmin(admin.ModelAdmin):
 @admin.register(BusinessTransactionPolicy)
 class BusinessTransactionPolicy(admin.ModelAdmin):
     list_display = [
-        "id", "name", "description", "cash_collection_mode", "meet_up_charge"
+        "id", "name", "description", "cash_collection_mode", "meet_up_charge", "business"
     ]
     search_fields = [
-        "name", "cash_collection_mode", "meet_up_charge"
+        "name__icontains", "cash_collection_mode__icontains", "meet_up_charge"
     ]
 
 
-@admin.register(CategoryClient)
-class CategoryClientAdmin(admin.ModelAdmin):
+@admin.register(BusinessClient)
+class BusinessClientAdmin(admin.ModelAdmin):
     list_display = [
-        "id", "category", "client", "business"
+        "id", "category", "client", "business", "last_patronized"
     ]
     search_fields = [
-        "name", "category__name", "client__email", "client__first_name",
-        "client__last_name", "business__name"
+        "name", "category__name__icontains", "client__email__iexact", "client__first_name__icontains",
+        "client__last_name__icontains", "business__name__icontains"
     ]
