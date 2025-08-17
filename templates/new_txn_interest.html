@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{%block title%} New Transaction Interest{% endblock %}
+{%block header%}{%endblock%}
+{%block style%}
+<style type="text/css">
+    .body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 20px;
+        text-align: left;
+    }
+    .txn__info {
+        display: table;
+        margin-top: 20px;
+        width: 100%;
+        border-collapse: collapse;
+        background-color: #f9f9f9;
+        color: #333;
+    }
+</style>
+{%endblock%}
+
+{% block content %}
+<div class="body">
+    <h1 class="salutation">Good news {{ vendor_name }}!</h1>
+    <p class="message">You have a new transaction interest from {{ client_name }}.</p>
+    <p class="details">Here are the details:</p>
+    <table class="txn__info">
+        <tr class="txn__info__child">
+            <th>Client Name</th>
+            <td>{{ client_name }}</td>
+        </tr>
+        <tr class="txn__info__child">
+            <th>Transaction Amount</th>
+            <td>{{ amount }}</td>
+        </tr>
+        <tr class="txn__info__child">
+            <th>Transaction Date</th>
+            <td>{{ transaction_date }}</td>
+        </tr>
+        <tr class="txn__info__child">
+            <th>Collection Mode</th>
+            <td>{{ mode }}</td>
+        </tr>
+    </table>
+</div>
+{%endblock%}

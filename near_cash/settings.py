@@ -77,7 +77,7 @@ ROOT_URLCONF = 'near_cash.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -137,7 +137,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+ENVIRONMENT = config("ENVIRONMENT", cast=str, default='development')
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
@@ -200,3 +200,9 @@ CELERY_BROKER_URL = config("CELERY_BROKER_URL", cast=str, default='amqp://guest:
 CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", cast=str, default='redis://redis:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = config("EMAIL_HOST", cast=str, default='localhost')
+EMAIL_PORT = config("EMAIL_PORT", cast=int, default=1025)
+EMAIL_USE_TLS = (ENVIRONMENT in ['production', 'staging'])
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", cast=str, default="support@nearcash.com")

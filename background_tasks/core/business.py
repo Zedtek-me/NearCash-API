@@ -5,7 +5,7 @@ from asgiref.sync import async_to_sync
 
 from utils.helpers.logs import logger
 
-from near_cash.celery import app
+from dtos.generics import EmailArgsDto
 
 class BusinessAsyncOperations:
 
@@ -24,7 +24,6 @@ class BusinessAsyncOperations:
 
         channel_layer = get_channel_layer()
         txn = TransactionUtil.get_transaction(**{"id": txn_id})
-        logger.debug(f"Transaction to publish to vendor fetched: {txn}")
         if not txn:
             logger.error(f"Transaction with id {txn_id} not found.")
             return False
@@ -38,6 +37,8 @@ class BusinessAsyncOperations:
                     "amount": txn.amount,
                     "client_current_location": txn.meta.get("client_current_location", {}),
                     "mode": txn.collection_mode,
+                    "vendor_name": vendor.full_name,
+                    "client_name": txn.client.full_name,
                 }
 
         notification_data = {
@@ -48,9 +49,22 @@ class BusinessAsyncOperations:
             }
         }
 
+        # publish push notification
         async_to_sync(
         channel_layer.send
         )(
             vendor.user_queue, notification_data
         )
-        # EmailService.send_email()
+        email_data: EmailArgsDto = {
+            "subject": "New Transaction Interest",
+            "body": "new_txn_interest.html",
+            "recipients": [vendor.email],
+            "context": txn_info
+        }
+
+        # send email notification
+        EmailService().send_email(
+            **email_data, raw=False
+        )
+
+        # send sms notification

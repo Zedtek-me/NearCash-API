@@ -82,6 +82,19 @@ services:
       - .:/app
     restart: always
 
+  mailhog:
+    image: mailhog/mailhog
+    container_name: near-cash-mailhog
+    hostname: near-cash-mailhog
+    ports:
+      - "8026:8025"
+      - "1026:1025"
+    networks:
+      - near-cash-network
+    restart: unless-stopped
+    env_file:
+      - .env
+
 volumes:
   postgres_data:
   redis_data:

@@ -48,6 +48,11 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
         self._channel = value
         self.save()
 
+    @property
+    def full_name(self):
+        """Returns the full name of the user."""
+        return f"{self.first_name} {self.last_name}"
+
 
 class SocialToken(BaseModel):
     """records social tokens"""
