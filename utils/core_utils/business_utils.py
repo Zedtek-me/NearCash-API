@@ -106,9 +106,9 @@ class BusinessUtil:
                     updated_address = value
                 setattr(business, field, value)
         if updated_address:
-            geoapify_service = LOCATION_SERVICES.get("geoapify")
+            google_service = LOCATION_SERVICES.get("google")
             # TODO: dynamically get country code based on the business' current country
-            coordinates = GeolocationUtils(geoapify_service).get_coordinate(
+            coordinates = GeolocationUtils(google_service).get_coordinate(
                 updated_address, country_code="ng"
             )
             business.geo_location = Point(
