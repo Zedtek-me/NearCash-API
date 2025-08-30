@@ -38,8 +38,8 @@ class BusinessUtil:
         if country == "Nigeria":
             business.currency = "NGN"
         business.save()
-        geoapify_service = LOCATION_SERVICES.get("geoapify")
-        coordinates = GeolocationUtils(geoapify_service).get_coordinate(
+        google_service = LOCATION_SERVICES.get("google")
+        coordinates = GeolocationUtils(google_service).get_coordinate(
             business.address, country_code=country_code
         )
         logger.debug(f"Coordinates for business {business.name}: {coordinates}")
