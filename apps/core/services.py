@@ -1,5 +1,6 @@
 from typing import Optional, Union, Type
 from requests import request, Request
+from googlemaps import Client
 
 from django.conf import settings
 
@@ -139,6 +140,25 @@ class OpenCageService(LocationInterface):
         # response = cls._initiate_request(endpoint, params=params)
         # logger.info(f"OpenCage response: {response}")
         # return response
+
+class GoogleMapServices(LocationInterface):
+
+    @classmethod
+    def get_coordinate(cls, address: str, country_code: Optional[str] = "ng") -> dict:
+        """gets the coordinate of an address"""
+        client = Client(key=settings.GOOGLE_API_KEY)
+        results = client.geocode(address, components={"country": country_code})
+        geometry = results[0].get("geometry", {}) if results else {}
+        location = geometry.get("location", {})
+        return {
+            "latitude": location.get("lat", 0.0),
+            "longitude": location.get("lng", 0.0)
+        }
+
+
+    @classmethod
+    def get_routes(cls, start_coord, end_coord = None, business = None, mode = "walk"):...
+
 
 
 class ClientService:

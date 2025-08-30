@@ -1,9 +1,12 @@
-from apps.core.services import GeoapifyService, OpenCageService
+from apps.core.services import (
+    GeoapifyService, OpenCageService,
+    GoogleMapServices
+)
 
 LOCATION_SERVICES = {
     "geoapify": GeoapifyService,
     "opencage": OpenCageService,
-    "google": None
+    "google": GoogleMapServices
 }
 
 STORE_WALK_IN = "STORE_WALK_IN"
