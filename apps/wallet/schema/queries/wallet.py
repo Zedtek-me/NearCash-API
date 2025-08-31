@@ -13,6 +13,7 @@ from utils.helpers.logs import logger
 from utils.helpers.kwargs import KwargUtil
 from utils.helpers.pagination import PaginationUtil
 from utils.wallet_utils.wallet import WalletUtil
+from utils.wallet_utils.transactions import TransactionUtil
 
 
 class Query(graphene.ObjectType):
@@ -24,6 +25,15 @@ class Query(graphene.ObjectType):
         business_id=graphene.String(),
         range=graphene.String(required=False),
         charge_rate=graphene.Float(required=False),
+        page_count=graphene.Int(),
+        page_number=graphene.Int()
+    )
+    trasnactions = graphene.List(
+        TransactionType,
+        wallet_id=graphene.String(),
+        business_id=graphene.String(),
+        status=graphene.String(),
+        status=graphene.String(),
         page_count=graphene.Int(),
         page_number=graphene.Int()
     )
@@ -54,6 +64,26 @@ class Query(graphene.ObjectType):
         Query.pagination = pagination_data
         assets = pagination_data.pop("items")
         return assets
+
+
+    @login_required
+    def resolve_transactions(self, info, **kwargs):
+        """
+        returns txns based on provided filters.
+        if business_id is provided, returns all txns related to that business;
+        otherwise, assumes that the current user is a client, who wants visibility to his own txns
+        """
+        user = info.context.user
+        page_count = kwargs.pop("page_count", 10)
+        page_number = kwargs.pop("page_number", 1)
+        _filter = self._prepare_txn_filter(user, kwargs) or {}
+        txns = TransactionUtil.get_transaction(False, **_filter)
+        paginated_txns = PaginationUtil.paginate(txns, page_number, page_count)
+        Query.pagination = paginated_txns
+        return paginated_txns.pop("items", [])
+
+
+    def _prepare_txn_filter(self, user: "User", initial_data: dict):...
 
     @login_required
     def resolve_pagination(
