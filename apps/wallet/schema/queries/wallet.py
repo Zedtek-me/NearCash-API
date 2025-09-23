@@ -28,12 +28,12 @@ class Query(graphene.ObjectType):
         page_count=graphene.Int(),
         page_number=graphene.Int()
     )
-    trasnactions = graphene.List(
+    transactions = graphene.List(
         TransactionType,
         wallet_id=graphene.String(),
         business_id=graphene.String(),
         status=graphene.String(),
-        status=graphene.String(),
+        search=graphene.String(),
         page_count=graphene.Int(),
         page_number=graphene.Int()
     )
@@ -76,14 +76,48 @@ class Query(graphene.ObjectType):
         user = info.context.user
         page_count = kwargs.pop("page_count", 10)
         page_number = kwargs.pop("page_number", 1)
-        _filter = self._prepare_txn_filter(user, kwargs) or {}
-        txns = TransactionUtil.get_transaction(False, **_filter)
+        search_filter, _filter = Query._prepare_txn_filter(user, kwargs) or (Q(), {})
+        txns = TransactionUtil.get_transaction(False, search_filter=search_filter, **_filter)
         paginated_txns = PaginationUtil.paginate(txns, page_number, page_count)
+        txns = paginated_txns.pop("items", [])
         Query.pagination = paginated_txns
-        return paginated_txns.pop("items", [])
+        return txns
 
 
-    def _prepare_txn_filter(self, user: "User", initial_data: dict):...
+    @staticmethod
+    def _prepare_txn_filter(user: "User", initial_data: dict):
+
+        search_filter = Q()
+        [
+            wallet_id, business_id, status, search
+        ] = KwargUtil.cherry_pick_data(
+            initial_data, ["wallet_id", "business_id", "status", "search"]
+        )
+        _filter = {}
+        if wallet_id:
+            _filter["wallet_id"] = wallet_id
+
+        if not business_id:
+            _filter["client"] = user
+        else:
+            _filter["business__id"] = business_id
+            _filter["client__isnull"] = False
+
+        if status:
+            _filter["status"] = status
+        if search:
+            search_filter &= (
+                Q(txn_ref__icontains=search) |
+                Q(client__first_name__icontains=search) |
+                Q(client__last_name__icontains=search) |
+                Q(client__email__icontains=search) |
+                Q(vendor__first_name__icontains=search) |
+                Q(vendor__last_name__icontains=search) |
+                Q(vendor__email__icontains=search) |
+                Q(asset__business__name__icontains=search) |
+                Q(description__icontains=search)
+            )
+        return search_filter, _filter
 
     @login_required
     def resolve_pagination(

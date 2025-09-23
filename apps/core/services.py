@@ -1,6 +1,6 @@
 from typing import Optional, Union, Type
 from requests import request, Request
-from googlemaps import Client
+from googlemaps import Client as GoogleMapClient
 
 from django.conf import settings
 
@@ -146,7 +146,7 @@ class GoogleMapServices(LocationInterface):
     @classmethod
     def get_coordinate(cls, address: str, country_code: Optional[str] = "ng") -> dict:
         """gets the coordinate of an address"""
-        client = Client(key=settings.GOOGLE_API_KEY)
+        client = GoogleMapClient(key=settings.GOOGLE_API_KEY)
         results = client.geocode(address, components={"country": country_code})
         geometry = results[0].get("geometry", {}) if results else {}
         location = geometry.get("location", {})
