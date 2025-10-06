@@ -1,4 +1,8 @@
-from celery import shared_task
+from celery import shared_task, Task
+from typing import Union
+
+from typing import Type
+from django.utils import timezone
 
 from typing import Type
 from django.utils import timezone
@@ -77,6 +81,7 @@ class BusinessAsyncOperations:
         )
 
         # send sms notification
+        return
 
     @classmethod
     def update_client_last_patronized(
@@ -93,3 +98,44 @@ class BusinessAsyncOperations:
         user_as_business_client.last_patronized = timezone.now().replace(tzinfo=tz)
         user_as_business_client.save()
         return user_as_business_client
+
+
+    @shared_task(bind=True, name="notify-client-of-txn-status")
+    def notify_client_of_txn_status(
+        self: Task, txn_id: Union[str, int]
+    ) -> bool:
+        """
+        notifies the client of the transaction status update via email and websocket
+        """
+        from utils.wallet_utils.transactions import TransactionUtil
+        from apps.notification.email.app_emails import EmailService
+
+        txn = TransactionUtil.get_transaction(**{"id": txn_id})
+        channel_layer = get_channel_layer()
+        txn_info = {
+                        "txn_ref": txn.txn_ref,
+                        "status": txn.status,
+                        "amount": txn.amount,
+                        "vendor_name": (txn.vendor and txn.vendor.full_name) or "",
+                        "client_name": txn.client.full_name,
+                    }
+
+        async_to_sync(
+            channel_layer.send
+        )(
+                txn.client.user_queue,
+                {
+                    "type": "send.notification",
+                    "message": {
+                        "title": "Vendor Processing Transaction",
+                        "txn_info": txn_info
+                    }
+                }
+            )
+
+        email_data: EmailArgsDto = {
+            "subject": "Transaction is being processed!",
+            "body": "txn_status_update.html",
+            "context": txn_info
+        }
+        EmailService().send_email(**email_data, raw=False)

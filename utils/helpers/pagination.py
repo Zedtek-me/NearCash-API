@@ -21,7 +21,8 @@ class PaginationUtil:
             'items': list(page),
             'total_items': paginator.count,
             'total_pages': paginator.num_pages,
+            'per_page': page_size,
             'current_page': page.number,
-            'has_next': page.has_next(),
-            'has_previous': page.has_previous(),
+            'next_page': page.next_page_number() if page.has_next() else None,
+            'previous_page': page.previous_page_number() if page.has_previous() else None,
         }
