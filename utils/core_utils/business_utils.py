@@ -33,6 +33,8 @@ class BusinessUtil:
         country = data.get("country", "").title()
         # TODO: use a mapping of countries and their currencies plus country code
         # in order to update currency, in case none is provided
+        if not user.businesses.exists():
+            data["is_primary"] = True
         business = Business.objects.create(owner=user, **data)
         country_code = "ng"
         if country == "Nigeria":
