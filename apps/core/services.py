@@ -2,6 +2,7 @@ from typing import Optional, Union, Type
 from requests import request, Request
 from googlemaps import Client as GoogleMapClient
 
+
 from django.conf import settings
 
 from interfaces.general.location import LocationInterface

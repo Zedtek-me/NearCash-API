@@ -4,6 +4,9 @@ from typing import Union
 from typing import Type
 from django.utils import timezone
 
+from typing import Type
+from django.utils import timezone
+
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
@@ -78,6 +81,7 @@ class BusinessAsyncOperations:
         )
 
         # send sms notification
+        return
 
     @classmethod
     def update_client_last_patronized(
@@ -87,7 +91,7 @@ class BusinessAsyncOperations:
         from apps.core.models import BusinessClient
         from utils.core_utils.core_utils import CoreUtil
 
-        user_as_business_client: BusinessClient = CoreUtil.get_or_create_user_as_business_client(
+        user_as_business_client: BusinessClient  = CoreUtil.get_or_create_user_as_business_client(
             client=client, business=txn.business
         )
         tz = timezone.get_current_timezone()
