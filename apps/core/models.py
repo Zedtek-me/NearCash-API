@@ -29,6 +29,7 @@ class Business(BaseModel):
         null=True, blank=True, db_index=True, verbose_name="Location Cordinates",
         geography=True, srid=4326
     )
+    is_primary = models.BooleanField(default=False)
 
     class Meta(BaseModel.Meta):
         db_table = 'business'
