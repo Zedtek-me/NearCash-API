@@ -12,7 +12,7 @@ class Command(BaseCommand):
         vendors = User.objects.filter(meta__user_type='VENDOR')
         for vendor in vendors:
             logger.info(f"Setting primary business for vendor {vendor.full_name} ({vendor.id})")
-            vendor_businesses = Business.objects.filter(owner__id=vendor.id).order_by('-date_created')
+            vendor_businesses = Business.objects.filter(owner__id=vendor.id).order_by('date_created')
             first_business = vendor_businesses.first()
             if first_business:
                 first_business.is_primary = True
