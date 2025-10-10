@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 from decouple import config
 from corsheaders.defaults import default_headers, default_methods
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'graphene_django',
+    'django_celery_beat',
     # project apps
     "apps.auths",
     "apps.core",
@@ -201,6 +203,14 @@ CELERY_BROKER_URL = config("CELERY_BROKER_URL", cast=str, default='amqp://guest:
 CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", cast=str, default='redis://redis:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_BEAT_SCHEDULE = {
+    "reminder-to-finalize-inprogress-txns": {
+        "task": "update_inprogress_transactions",
+        "schedule": crontab(
+            day_of_week='*', hour='*/6', minute=0
+        )
+    }
+}
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = config("EMAIL_HOST", cast=str, default='localhost')

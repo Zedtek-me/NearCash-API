@@ -6,7 +6,7 @@ from django.db.models import Q, F
 from apps.core.models import Business
 from apps.core.schema.types.business_types import (
     BusinessType, RouteInputType, BusinessTransactionPolicyType,
-    CashCollectionModes, BusinessClientType
+    CashCollectionModes, BusinessClientType, BusinessAnalyticsType
 )
 from apps.core.constants import LOCATION_SERVICES
 
@@ -70,6 +70,9 @@ class Query(graphene.ObjectType):
         page_number=graphene.Int(default_value=1)
     )
 
+    business_analytics = graphene.Field(
+        BusinessAnalyticsType, business_id=graphene.String()
+    )
 
     @login_required
     def resolve_business(self, info, **kwargs) -> BusinessType:

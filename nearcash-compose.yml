@@ -82,6 +82,27 @@ services:
       - .:/app
     restart: always
 
+# scheduler for periodic tasks
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: near-cash-celery-beat
+    container_name: near-cash-celery-beat
+    hostname: near-cash-celery-beat
+    entrypoint: celery -A near_cash.celery beat --loglevel=info --scheduler=django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - rabbitmq
+      - database
+    networks:
+      - near-cash-network
+    volumes:
+      - .:/app
+    restart: always
+
   mailhog:
     image: mailhog/mailhog
     container_name: near-cash-mailhog

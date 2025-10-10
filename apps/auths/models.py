@@ -53,6 +53,13 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
         """Returns the full name of the user."""
         return f"{self.first_name} {self.last_name}"
 
+    @property
+    def phone_number(self):
+        """Returns the phone number from the user profile if it exists."""
+        if hasattr(self, 'profile') and self.profile.phone_number:
+            return self.profile.phone_number
+        return None
+
 
 class SocialToken(BaseModel):
     """records social tokens"""
@@ -83,3 +90,16 @@ class SocialToken(BaseModel):
         if return_all:
             return instances
         return instances.first()
+
+
+class UserProfile(BaseModel):
+    user = models.OneToOneField(
+        to="auths.User", on_delete=models.CASCADE, related_name="profile"
+    )
+    phone_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.email} -> {self.phone_number}"
+
+    def __repr__(self):
+        return f"{self.user.email} -> {self.phone_number}"

@@ -10,6 +10,9 @@ from apps.wallet.constants import (
     FULFILLED, TXN_STATUSES
 )
 
+from celery import shared_task
+from near_cash.celery import BaseTask
+
 class TransactionUtil:
     """all things txn related"""
 
@@ -70,3 +73,12 @@ class TransactionUtil:
             )
         return txn
 
+    @shared_task(bind=True, name="update_inprogress_transactions", base=BaseTask)
+    def update_inprogress_transactions(self: BaseTask):
+        """
+        checks for transactions that have been in the IN_PROGRESS
+        for too long after the initiation date and time; if found,
+        marks send a reminder to both the client and the vendor to
+        update the txn status appropriately -- whether successful or canceled
+        """
+        ...

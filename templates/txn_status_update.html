@@ -24,26 +24,11 @@
 
 {% block content %}
 <div class="body">
-    <h1 class="salutation">Good news {{ vendor_name }}!</h1>
-    <p class="message">You have a new transaction interest from {{ client_name }}.</p>
-    <p class="details">Here are the details:</p>
-    <table class="txn__info">
-        <tr class="txn__info__child">
-            <th>Client Name</th>
-            <td>{{ client_name }}</td>
-        </tr>
-        <tr class="txn__info__child">
-            <th>Transaction Amount</th>
-            <td>{{ amount }}</td>
-        </tr>
-        <tr class="txn__info__child">
-            <th>Collection Mode</th>
-            <td>{{ mode }}</td>
-        </tr>
-        <tr class="txn__info__child">
-            <th>Client Location</th>
-            <td>{{ client_current_location }}</td>
-        </tr>
-    </table>
+    <h1 class="salutation">Good news {{ client_name }}!</h1>
+    <p class="message">Vendor {{ vendor_name }} has already accepted, and is preparing your transaction at the moment.</p>
+    <p class="details">The vendor will contact you shortly!</p>
+    <p class="contact-vendor">
+        You can also call the vendor via: {{ vendor_phone_number }}
+    </p>
 </div>
 {%endblock%}

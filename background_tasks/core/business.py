@@ -51,6 +51,8 @@ class BusinessAsyncOperations:
                     "mode": txn.collection_mode,
                     "vendor_name": vendor.full_name,
                     "client_name": txn.client.full_name,
+                    "client_phone_number": txn.client.phone_number,
+                    "vendor_phone_number": vendor.phone_number
                 }
 
         notification_data = {
@@ -118,6 +120,9 @@ class BusinessAsyncOperations:
                         "amount": txn.amount,
                         "vendor_name": (txn.vendor and txn.vendor.full_name) or "",
                         "client_name": txn.client.full_name,
+                        "client_phone_number": txn.client.phone_number,
+                        "vendor_phone_number": txn.vendor.phone_number if txn.vendor else "",
+                        "client_current_location": txn.meta.get("client_current_location", {})
                     }
 
         async_to_sync(
@@ -127,7 +132,7 @@ class BusinessAsyncOperations:
                 {
                     "type": "send.notification",
                     "message": {
-                        "title": "Vendor Processing Transaction",
+                        "title": "Vendor Accepted Transaction Request",
                         "txn_info": txn_info
                     }
                 }
@@ -136,6 +141,7 @@ class BusinessAsyncOperations:
         email_data: EmailArgsDto = {
             "subject": "Transaction is being processed!",
             "body": "txn_status_update.html",
+            "recipients": [txn.client.email],
             "context": txn_info
         }
         EmailService().send_email(**email_data, raw=False)
