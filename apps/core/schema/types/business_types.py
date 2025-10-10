@@ -10,6 +10,8 @@ from apps.core.constants import (
     MEET_UP, STORE_WALK_IN, MEET_UP_AND_STORE_WALK_IN
 )
 
+from utils.helpers.logs import logger
+
 class PointFieldType(graphene.types.Scalar):
     """Custom GraphQL Scalar for GeoDjango PointField"""
 
@@ -34,6 +36,7 @@ class PointFieldType(graphene.types.Scalar):
 
 class BusinessType(DjangoObjectType):
     location = PointFieldType()
+    distance = graphene.Float()
 
     class Meta:
         model = Business
@@ -41,6 +44,12 @@ class BusinessType(DjangoObjectType):
 
     def resolve_location(self, info):
         return self.geo_location
+
+    def resolve_distance(self, info):
+        if hasattr(self, 'distance'):
+            # resolve the distance in kilometers
+            return float(round(self.distance.km, 2))
+        return None
 
 
 class BusinessClientCategoryType(DjangoObjectType):
