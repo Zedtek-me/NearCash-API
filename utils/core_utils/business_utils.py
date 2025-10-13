@@ -7,7 +7,8 @@ from django.db.models import Q
 from apps.auths.models import User
 from apps.core.models import (
     Business, BusinessTransactionPolicy,
-    BusinessClientCategory, BusinessClient
+    BusinessClientCategory, BusinessClient,
+    CurrentLocation
 )
 
 from apps.core.services import ClientService
@@ -152,3 +153,63 @@ class BusinessUtil:
         """client initiates transaction to a vendor"""
         txn = ClientService.initiate_transaction(client, data)
         return txn
+
+
+    @classmethod
+    def get_vendor_latest_location(
+        cls,  vendor_id: Union[str, int],
+        client_coordinate: Optional[dict] = None
+    ) -> dict:
+        """
+        fetches the current location of a vendor
+        in order to display to the end user on the map
+        """
+
+        from apps.core.models import CurrentLocation
+
+        vendor_user = User.objects.filter(id=vendor_id, meta__user_type="VENDOR").first()
+        if not vendor_user:
+            return {}
+        current_location: CurrentLocation = vendor_user.current_locations.first() #default ordering is by -date_created
+        if not current_location:
+            return {}
+        vendor_location = {
+            "latitude": current_location.location.y,
+            "longitude": current_location.location.x,
+        }
+
+        if client_coordinate:
+            point1 = (
+                client_coordinate.get("latitude"),
+                client_coordinate.get("longitude")
+            )
+
+            point2 = (
+                vendor_location.get("latitude"),
+                vendor_location.get("longitude")
+            )
+            vendor_location["distance_from_client"] = GeolocationUtils.calculate_distance(
+                point1, point2
+            )
+        return vendor_location
+
+    @classmethod
+    def record_current_location(
+        cls, user: User, location: dict, location_type: str = "Vendor",
+        **kwargs
+    ) -> CurrentLocation:
+        """
+        captures the current location of a user either vendor or client
+        """
+        business = None
+        if location_type.title() == "Vendor":
+            business = cls.get_business({"id": kwargs.get("business_id")})
+
+        loc = CurrentLocation(
+            user=user,
+            location=Point(location.get("longitude"), location.get("latitude"), srid=4326),
+            location_type=location_type.title(),
+            business=business
+        )
+        loc.save()
+        return loc

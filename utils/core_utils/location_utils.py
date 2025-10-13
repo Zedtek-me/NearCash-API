@@ -2,6 +2,8 @@ from typing import Type, Callable, Optional
 
 from interfaces.general.location import LocationInterface
 
+from utils.helpers.logs import logger
+
 class GeolocationUtils:
 
     def __init__(self, geolocation_service: Type[LocationInterface]) -> None:
@@ -25,3 +27,16 @@ class GeolocationUtils:
             business=business,
             mode=mode
         )
+
+    @classmethod
+    def calculate_distance(cls, point1: tuple, point2: tuple, unit: str = "km") -> float:
+        """
+        Calculates the distance between two geographical points
+        """
+        from geopy.distance import geodesic
+
+        if unit not in ["km", "miles"]:
+            raise ValueError("Unit must be either 'km' or 'miles'.")
+        logger.debug(f"Calculating distance between {point1} and {point2} in {unit}")
+        distance = geodesic(point1, point2)
+        return distance.km if unit == "km" else distance.miles

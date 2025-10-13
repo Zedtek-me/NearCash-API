@@ -65,7 +65,7 @@ class BusinessAsyncOperations:
 
         # publish push notification
         async_to_sync(
-        channel_layer.send
+        channel_layer.group_send
         )(
             vendor.user_queue, notification_data
         )
@@ -126,7 +126,7 @@ class BusinessAsyncOperations:
                     }
 
         async_to_sync(
-            channel_layer.send
+            channel_layer.group_send
         )(
                 txn.client.user_queue,
                 {

@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from .models import (
     Business, BusinessTransactionPolicy, BusinessClientCategory,
-    BusinessClient
+    BusinessClient, CurrentLocation
 )
 
 @admin.register(Business)
@@ -53,3 +53,17 @@ class BusinessClientAdmin(admin.ModelAdmin):
         "name", "category__name__icontains", "client__email__iexact", "client__first_name__icontains",
         "client__last_name__icontains", "business__name__icontains"
     ]
+
+
+
+@admin.register(CurrentLocation)
+class CurrentLocationAdmin(admin.ModelAdmin):
+    list_display = [
+        "id", "user", "business", "location_type"
+    ]
+    search_fields = [
+        "user__email__iexact", "user__first_name__icontains", "user__last_name__icontains",
+        "business__name__icontains", "location_type__longitude", "location_type__latitude"
+    ]
+    list_filter = ("date_created", "last_updated")
+    readonly_fields = ("location_type", "id")

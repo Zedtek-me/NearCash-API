@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.gis.db.models import PointField
+from django.utils.translation import gettext_lazy as _
 
 from interfaces.models.base import BaseModel
 
@@ -135,3 +136,41 @@ class BusinessClient(BaseModel):
                 violation_error_message="Client is already a patron of this business!"
             )
         ]
+
+
+
+class CurrentLocation(BaseModel):
+    """
+    Records the last known location of both a business owner
+    and their clients.
+    """
+    class CurrentLocationType(models.TextChoices):
+        VENDOR = "Vendor"
+        CLIENT = "Client"
+
+
+    user = models.ForeignKey(
+        to="auths.User", on_delete=models.CASCADE, null=True,
+        related_name="current_locations"
+    )
+    business = models.ForeignKey(
+        to="Business", on_delete=models.CASCADE, null=True,
+        related_name="current_locations"
+    )
+    location = PointField(
+        null=True, blank=True, db_index=True, verbose_name="Location Cordinates",
+        geography=True, srid=4326
+    )
+    location_type = models.CharField(
+        max_length=20, choices=CurrentLocationType.choices,
+        default=CurrentLocationType.VENDOR, db_index=True
+    )
+
+    def __str__(self):
+        return f"{self.user} - {self.location_type}"
+    
+    class Meta(BaseModel.Meta):
+        db_table = "current_location"
+        verbose_name = "current location"
+        verbose_name_plural = "current locations"
+        ordering = ["-date_created"]
