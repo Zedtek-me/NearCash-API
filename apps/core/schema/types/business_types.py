@@ -111,3 +111,4 @@ class CreateTransactionPolicyInputType(graphene.InputObjectType):
 class BusinessAnalyticsType(graphene.ObjectType):
     total_transactions = graphene.Float()
     current_month_transactions = graphene.Float()
+    total_transaction_value = graphene.Float()

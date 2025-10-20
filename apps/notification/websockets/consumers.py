@@ -44,7 +44,7 @@ class NotificationConsumer(JsonWebsocketConsumer):
     def receive_json(self, text_data):
         """Handle incoming messages."""
         from utils.wallet_utils.transactions import TransactionUtil
-
+        logger.debug(f"text data gotten on websocket msg receiver::::::::: {text_data}")
         msg_type = text_data.get('message_type', "")
         if msg_type and msg_type.lower() == "vendor_location_update":
             vendor_id = text_data.get("vendor_id")

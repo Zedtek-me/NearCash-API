@@ -199,6 +199,12 @@ class Query(graphene.ObjectType):
         return paginated.pop("items")
 
     @login_required
+    def resolve_business_analytics(self, info, **kwargs):
+        """
+        resolves the analytics for a business and its transactions
+        """
+
+    @login_required
     def resolve_pagination(
         self, info
     ) -> dict:

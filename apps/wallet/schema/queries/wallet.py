@@ -37,6 +37,10 @@ class Query(graphene.ObjectType):
         page_count=graphene.Int(),
         page_number=graphene.Int()
     )
+    transaction = graphene.Field(
+        TransactionType,
+        transaction_id=graphene.String(required=True)
+    )
 
     @login_required
     def resolve_business_assets(
@@ -118,6 +122,12 @@ class Query(graphene.ObjectType):
                 Q(description__icontains=search)
             )
         return search_filter, _filter
+
+    @login_required
+    def resolve_transaction(self, info, **kwargs):
+        txn_id = kwargs.get("transaction_id")
+        txn = TransactionUtil.get_transaction(id=txn_id)
+        return txn
 
     @login_required
     def resolve_pagination(
