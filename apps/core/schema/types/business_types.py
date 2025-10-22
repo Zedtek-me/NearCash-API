@@ -110,7 +110,10 @@ class CreateTransactionPolicyInputType(graphene.InputObjectType):
 
 class AnalyticsType(graphene.ObjectType):
     total_transactions = graphene.Int()
+    fulfilled_transactions = graphene.Int()
     current_month_transactions = graphene.Int()
     total_transaction_value = graphene.Float()
+    current_month_transaction_value = graphene.Float()
+    percentage_reduction_from_past_month = graphene.Float()
     total_charges_plus_extra = graphene.Float()
     extra_charges = graphene.Float()

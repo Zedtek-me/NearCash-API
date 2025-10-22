@@ -1,5 +1,7 @@
 from typing import Optional, Union, List, Type
 
+from dateutil.relativedelta import relativedelta
+
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance as Geodistance
 from django.db.models import Q, Sum, QuerySet, Case, When, Value, FloatField, F
@@ -18,6 +20,7 @@ from apps.core.services import ClientService
 
 from apps.core.constants import LOCATION_SERVICES
 from apps.wallet.models import Transaction
+from apps.wallet.constants import FULFILLED
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
@@ -235,11 +238,14 @@ class BusinessUtil:
             )
 
         now = timezone.now()
-        curr_month = now.month
+        past_month_date = now - relativedelta(months=1)
         txn_analytics = {
             "total_transactions": 0,
+            "fulfilled_trasactions": 0,
             "current_month_transactions": 0,
             "total_transaction_value": 0.0,
+            "current_month_transaction_value": 0.0,
+            "percentage_reduction_from_past_month": 0.0,
             "total_charges_plus_extra": 0.0,
             "extra_charges": 0.0
         }
@@ -252,19 +258,37 @@ class BusinessUtil:
             total_trxns = Transaction.objects.filter(
                 client__id=user.id
             )
-        current_month_trxns = total_trxns.filter(date_created__month=curr_month)
-        total_trxns_value = total_trxns.aggregate(trxn_value=Sum("amount")).get("trxn_value", 0.0)
-        total_charges = total_trxns.aggregate(total_charges=Sum("charge")).get("total_charges", 0.0)
-        extra_charges_sum = cls._sum_extra_charges_on_trxns(total_trxns)
+        fulfilled_trxns = total_trxns.filter(status=FULFILLED)
+        current_month_trxns = fulfilled_trxns.filter(
+            date_created__date__year=now.date().year,
+            date_created__date__month=now.month,
+        )
+        past_month_trxns = fulfilled_trxns.filter(
+            date_created__date__year=past_month_date.year,
+            date_created__month=past_month_date.month
+        )
+
+        current_month_trxn_value = current_month_trxns.aggregate(curr_month_val=Sum("amount")).get("curr_month_val") or 0.0
+        past_month_trxn_value = past_month_trxns.aggregate(past_month_val=Sum("amount")).get("past_month_val") or 0.0
+        total_trxns_value = fulfilled_trxns.aggregate(trxn_value=Sum("amount")).get("trxn_value") or 0.0
+        total_charges = fulfilled_trxns.aggregate(total_charges=Sum("charge")).get("total_charges") or 0.0
+        extra_charges_sum = cls._sum_extra_charges_on_trxns(fulfilled_trxns)
         total_charges += extra_charges_sum
 
         txn_analytics.update({
             "total_transactions": total_trxns.count(),
+            "fulfilled_transactions": fulfilled_trxns.count(),
             "current_month_transactions": current_month_trxns.count(),
             "total_transaction_value": total_trxns_value,
+            "current_month_transaction_value": current_month_trxn_value,
             "total_charges_plus_extra": total_charges,
             "extra_charges": extra_charges_sum
         })
+        if past_month_trxn_value > current_month_trxn_value:
+            percentage_reduction = (
+                current_month_trxn_value / past_month_trxn_value
+            ) * 100
+            txn_analytics["percentage_reduction_from_past_month"] = percentage_reduction
         return txn_analytics
 
     @classmethod
@@ -275,7 +299,8 @@ class BusinessUtil:
         aggregates all of the extra charges on each transaction object
         """
         extra_charge_val = trxns.filter(
-            extra_charge__has_key="amount"
+            extra_charge__has_key="amount",
+            status=FULFILLED
         ).aggregate(extra_charge_val=Sum(Cast("extra_charge__amount", output_field=FloatField())))\
             .get("extra_charge_val")
         logger.debug(f"extra charges on all transactions")
