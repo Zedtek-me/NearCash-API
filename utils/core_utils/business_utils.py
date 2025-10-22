@@ -299,8 +299,7 @@ class BusinessUtil:
         aggregates all of the extra charges on each transaction object
         """
         extra_charge_val = trxns.filter(
-            extra_charge__has_key="amount",
-            status=FULFILLED
+            extra_charge__has_key="amount"
         ).aggregate(extra_charge_val=Sum(Cast("extra_charge__amount", output_field=FloatField())))\
             .get("extra_charge_val")
         logger.debug(f"extra charges on all transactions")
