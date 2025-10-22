@@ -108,7 +108,9 @@ class CreateTransactionPolicyInputType(graphene.InputObjectType):
     meet_up_charge = graphene.Float()
 
 
-class BusinessAnalyticsType(graphene.ObjectType):
-    total_transactions = graphene.Float()
-    current_month_transactions = graphene.Float()
+class AnalyticsType(graphene.ObjectType):
+    total_transactions = graphene.Int()
+    current_month_transactions = graphene.Int()
     total_transaction_value = graphene.Float()
+    total_charges_plus_extra = graphene.Float()
+    extra_charges = graphene.Float()

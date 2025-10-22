@@ -2,7 +2,9 @@ from typing import Optional, Union, List, Type
 
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance as Geodistance
-from django.db.models import Q
+from django.db.models import Q, Sum, QuerySet, Case, When, Value, FloatField, F
+from django.db.models.functions import Cast
+from django.utils import timezone
 
 from apps.auths.models import User
 from apps.core.models import (
@@ -18,8 +20,11 @@ from apps.core.constants import LOCATION_SERVICES
 from apps.wallet.models import Transaction
 
 from utils.helpers.logs import logger
+from utils.helpers.exception import CustomException
+
 from utils.core_utils.location_utils import GeolocationUtils
 from utils.core_utils.core_utils import CoreUtil
+from utils.wallet_utils.transactions import TransactionUtil
 
 from dtos.core_dtos.business_dtos import UpdateBusinessDto
 
@@ -213,3 +218,65 @@ class BusinessUtil:
         )
         loc.save()
         return loc
+
+    @classmethod
+    def get_txn_analytics(
+        cls, user, user_type: str, business_id: Optional[str] = None
+    ) -> dict:
+        """
+        returns the transaction analytics for a business
+        """
+        if user_type and user_type.lower() not in ["vendor", "client"]:
+            raise CustomException("Please specify whether vendor or client analytics to retrieve!")
+
+        if user_type.lower() == "vendor" and not business_id:
+            raise CustomException(
+                "Please specify the business whose analytics needs to be retreived!"
+            )
+
+        now = timezone.now()
+        curr_month = now.month
+        txn_analytics = {
+            "total_transactions": 0,
+            "current_month_transactions": 0,
+            "total_transaction_value": 0.0,
+            "total_charges_plus_extra": 0.0,
+            "extra_charges": 0.0
+        }
+
+        if user_type.lower() == "vendor":
+            total_trxns = Transaction.objects.filter(
+                vendor__id=user.id, business_id=business_id
+            )
+        else:
+            total_trxns = Transaction.objects.filter(
+                client__id=user.id
+            )
+        current_month_trxns = total_trxns.filter(date_created__month=curr_month)
+        total_trxns_value = total_trxns.aggregate(trxn_value=Sum("amount")).get("trxn_value", 0.0)
+        total_charges = total_trxns.aggregate(total_charges=Sum("charge")).get("total_charges", 0.0)
+        extra_charges_sum = cls._sum_extra_charges_on_trxns(total_trxns)
+        total_charges += extra_charges_sum
+
+        txn_analytics.update({
+            "total_transactions": total_trxns.count(),
+            "current_month_transactions": current_month_trxns.count(),
+            "total_transaction_value": total_trxns_value,
+            "total_charges_plus_extra": total_charges,
+            "extra_charges": extra_charges_sum
+        })
+        return txn_analytics
+
+    @classmethod
+    def _sum_extra_charges_on_trxns(
+        cls, trxns: QuerySet
+    ) -> float:
+        """
+        aggregates all of the extra charges on each transaction object
+        """
+        extra_charge_val = trxns.filter(
+            extra_charge__has_key="amount"
+        ).aggregate(extra_charge_val=Sum(Cast("extra_charge__amount", output_field=FloatField())))\
+            .get("extra_charge_val")
+        logger.debug(f"extra charges on all transactions")
+        return extra_charge_val or 0.0

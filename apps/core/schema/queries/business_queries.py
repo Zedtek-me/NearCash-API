@@ -6,7 +6,7 @@ from django.db.models import Q, F
 from apps.core.models import Business
 from apps.core.schema.types.business_types import (
     BusinessType, RouteInputType, BusinessTransactionPolicyType,
-    CashCollectionModes, BusinessClientType, BusinessAnalyticsType
+    CashCollectionModes, BusinessClientType, AnalyticsType
 )
 from apps.core.constants import LOCATION_SERVICES
 
@@ -70,8 +70,9 @@ class Query(graphene.ObjectType):
         page_number=graphene.Int(default_value=1)
     )
 
-    business_analytics = graphene.Field(
-        BusinessAnalyticsType, business_id=graphene.String()
+    analytics = graphene.Field(
+        AnalyticsType, business_id=graphene.String(),
+        user_type=graphene.String(required=True)
     )
 
     @login_required
@@ -199,10 +200,14 @@ class Query(graphene.ObjectType):
         return paginated.pop("items")
 
     @login_required
-    def resolve_business_analytics(self, info, **kwargs):
+    def resolve_analytics(self, info, **kwargs):
         """
         resolves the analytics for a business and its transactions
         """
+        user = info.context.user
+        buz_id = kwargs.get("business_id")
+        user_type = kwargs.get("user_type")
+        return BusinessUtil.get_txn_analytics(user, user_type, buz_id)
 
     @login_required
     def resolve_pagination(
