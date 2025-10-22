@@ -302,5 +302,4 @@ class BusinessUtil:
             extra_charge__has_key="amount"
         ).aggregate(extra_charge_val=Sum(Cast("extra_charge__amount", output_field=FloatField())))\
             .get("extra_charge_val")
-        logger.debug(f"extra charges on all transactions")
         return extra_charge_val or 0.0
