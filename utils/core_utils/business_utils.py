@@ -4,7 +4,10 @@ from dateutil.relativedelta import relativedelta
 
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance as Geodistance
-from django.db.models import Q, Sum, QuerySet, Case, When, Value, FloatField, F
+from django.db.models import (
+     Q, Sum, QuerySet, Case, When, Value, FloatField, F,
+     ExpressionWrapper, BooleanField, Subquery
+)
 from django.db.models.functions import Cast
 from django.utils import timezone
 
@@ -67,7 +70,7 @@ class BusinessUtil:
 
     @classmethod
     def get_nearby_businesses(
-        cls, current_lat: float, current_long: float, radius: int = 2000
+        cls, current_lat: float, current_long: float, radius: int = 15000
     ) -> List[Business]:
         """returns all the businesses that are within a radius of the current location"""
         point = Point(current_long, current_lat, srid=4326)
@@ -75,6 +78,14 @@ class BusinessUtil:
             distance=Geodistance("geo_location", point)
         ).filter(
             geo_location__distance_lte=(point, radius)
+        ).order_by("distance")
+        nearest_business = businesses.values("distance").first()
+        businesses = businesses.annotate(
+                nearest=Case(
+                    When(distance=nearest_business.get("distance"), then=Value(True)),
+                    default=False,
+                    output_field=BooleanField()
+                )
         ).order_by("distance")
         return businesses
 

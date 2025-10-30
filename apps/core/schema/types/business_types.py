@@ -37,6 +37,7 @@ class PointFieldType(graphene.types.Scalar):
 class BusinessType(DjangoObjectType):
     location = PointFieldType()
     distance = graphene.Float()
+    nearest = graphene.Boolean()
 
     class Meta:
         model = Business
@@ -51,6 +52,10 @@ class BusinessType(DjangoObjectType):
             return float(round(self.distance.km, 2))
         return None
 
+    def resolve_nearest(self, info):
+        if hasattr(self, "nearest") and self.nearest is True:
+            return self.nearest
+        return False
 
 class BusinessClientCategoryType(DjangoObjectType):
 

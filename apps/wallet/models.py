@@ -77,7 +77,7 @@ class Transaction(BaseModel):
         help_text="ID of the wallet used for the transaction"
     )
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         db_table = 'transaction'
         verbose_name = "Transaction"
         verbose_name_plural = "Transactions"
