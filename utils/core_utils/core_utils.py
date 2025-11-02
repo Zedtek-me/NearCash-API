@@ -153,10 +153,12 @@ class CoreUtil:
         business_filter = {"id": business_id}
         if not business_id:
             client_ids = user.vendor_transactions.values_list("client_id", flat=True)
-            return BusinessClient.objects.filter(client__id__in=client_ids).distinct()
+            return BusinessClient.objects.filter(client__id__in=client_ids).order_by("client_id", "id")\
+                .distinct("client_id")
         business = BusinessUtil.get_business(business_filter)
         client_ids = business.transactions.values_list("client_id", flat=True)
-        clients = BusinessClient.objects.filter(client__id__in=client_ids).distinct()
+        clients = BusinessClient.objects.filter(client__id__in=client_ids).order_by("client_id", "id")\
+            .distinct("client_id")
         if category_id:
             clients = clients.filter(category__id=category_id)
         return clients
