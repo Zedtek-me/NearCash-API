@@ -95,8 +95,8 @@ class NotificationConsumer(JsonWebsocketConsumer):
 
     def send_notification(self, event):
         """Send a notification to the WebSocket."""
-        event.pop("type", None)
-        self.send_json(content=event['message'])
+        # event.pop("type", None)
+        self.send_json(content=event)
 
 
     def _update_user_channel(self) -> None:
