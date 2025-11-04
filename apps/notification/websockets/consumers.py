@@ -86,17 +86,18 @@ class NotificationConsumer(JsonWebsocketConsumer):
                 self.general_notification_group_name,
                 {
                     "type": "send.notification",
-                    "message_type": "vendor_latest_location",
-                    "vendor_id": vendor_id,
-                    "location": vendor_latest_location
+                    "message": {
+                        "message_type": "vendor_latest_location",
+                        "vendor_id": vendor_id,
+                        "location": vendor_latest_location
+                    }
                 }
             )
         return
 
     def send_notification(self, event):
         """Send a notification to the WebSocket."""
-        # event.pop("type", None)
-        self.send_json(content=event)
+        self.send_json(content=event["message"])
 
 
     def _update_user_channel(self) -> None:
@@ -112,7 +113,7 @@ class NotificationConsumer(JsonWebsocketConsumer):
         location = kwargs.get("location")
 
         if not location or not vendor_id:
-            CustomException("Invalid data provided for recording location", status_code=400)
+            raise CustomException("Invalid data provided for recording location")
         vendor_user = UserModel.objects.filter(id=vendor_id, meta__user_type="VENDOR").first()
         location = BusinessUtil.record_current_location(
             vendor_user, location, location_type="Vendor",
