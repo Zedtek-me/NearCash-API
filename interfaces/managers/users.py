@@ -20,6 +20,8 @@ class UserManager(BaseUserManager):
         user.is_active = True
         if password:
             user.set_password(password)
+        else:
+            user.set_unusable_password()
         user.save()
         return user
 
