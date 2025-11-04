@@ -82,15 +82,20 @@ class NotificationConsumer(JsonWebsocketConsumer):
             vendor_latest_location = BusinessUtil.get_vendor_latest_location(
                 vendor_id, client_coordinate
             )
-            self.send_json({
-                "message_type": "vendor_latest_location",
-                "vendor_id": vendor_id,
-                "location": vendor_latest_location
-            })
+            async_to_sync(self.channel_layer.group_send)(
+                self.general_notification_group_name,
+                {
+                    "type": "send.notification",
+                    "message_type": "vendor_latest_location",
+                    "vendor_id": vendor_id,
+                    "location": vendor_latest_location
+                }
+            )
         return
 
     def send_notification(self, event):
         """Send a notification to the WebSocket."""
+        event.pop("type", None)
         self.send_json(content=event['message'])
 
 
