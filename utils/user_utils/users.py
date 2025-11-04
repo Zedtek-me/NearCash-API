@@ -19,11 +19,14 @@ class UserUtil:
         user_type = cls._parse_user_type(data.pop("user_type", None))
         first_time = cls.check_first_time(user)
         picture_url = data.pop("picture", None) or user.meta.get("picture")
+        phone_number = data.pop("phone_number", None)
         for key, value in data.items():
             if hasattr(user, key) and value is not None:
                 setattr(user, key, value)
         user.meta.update({"user_type": user_type, "picture": picture_url})
         user.save()
+        if phone_number and hasattr(user, "profile"):
+            user.profile.add(phone_number=phone_number)
         if user_type == "VENDOR" and first_time:
             business_data = data.pop("business_data", {})
             BusinessUtil.create_business(
