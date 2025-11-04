@@ -6,7 +6,8 @@ from django.db.models import Q, F
 from apps.core.models import Business
 from apps.core.schema.types.business_types import (
     BusinessType, RouteInputType, BusinessTransactionPolicyType,
-    CashCollectionModes, BusinessClientType, AnalyticsType
+    CashCollectionModes, BusinessClientType, AnalyticsType,
+    BusinessClientCategoryType
 )
 from apps.core.constants import LOCATION_SERVICES
 
@@ -21,7 +22,6 @@ from utils.helpers.exception import CustomException
 
 
 class Query(graphene.ObjectType):
-    pagination = None
 
     business = graphene.Field(
         BusinessType,
@@ -75,6 +75,15 @@ class Query(graphene.ObjectType):
         user_type=graphene.String(required=True)
     )
 
+    categories = graphene.List(
+        BusinessClientCategoryType,
+        id=graphene.String(),
+        business_id=graphene.String(required=True),
+        search=graphene.String(),
+        page_count=graphene.Int(default_value=10),
+        page_number=graphene.Int(default_value=1)
+    )
+
     @login_required
     def resolve_business(self, info, **kwargs) -> BusinessType:
         """single business"""
@@ -92,7 +101,7 @@ class Query(graphene.ObjectType):
         paginated = PaginationUtil.paginate(
             businesses, page_no, page_count
         )
-        Query.pagination = paginated
+        info.context.pagination = paginated
         businesses = paginated.pop("items")
         return businesses
 
@@ -112,7 +121,7 @@ class Query(graphene.ObjectType):
         paginated_businesses = PaginationUtil.paginate(
             businesses, kwargs.get("page_number", 1), kwargs.get("page_count", 10)
         )
-        Query.pagination = paginated_businesses
+        info.context.pagination = paginated_businesses
         businesses = paginated_businesses.pop("items")
         return businesses
 
@@ -171,7 +180,7 @@ class Query(graphene.ObjectType):
         paginated = PaginationUtil.paginate(
             policies, page_no, page_count
         )
-        Query.pagination = paginated
+        info.context.pagination = paginated
         policies = paginated.pop("items")
         return policies
 
@@ -196,7 +205,7 @@ class Query(graphene.ObjectType):
         paginated = PaginationUtil.paginate(
             clients, page_number=page_number, page_size=page_count
         )
-        Query.pagination = paginated
+        info.context.pagination = paginated
         return paginated.pop("items")
 
     @login_required
@@ -210,7 +219,14 @@ class Query(graphene.ObjectType):
         return BusinessUtil.get_txn_analytics(user, user_type, buz_id)
 
     @login_required
-    def resolve_pagination(
-        self, info
-    ) -> dict:
-        return Query.pagination
+    def resolve_categories(self, info, **kwargs):
+        user = info.context.user
+        page_count = kwargs.pop("page_count", 10)
+        page_number = kwargs.pop("page_number", 1)
+        categories = CoreUtil.get_business_client_categories(user, kwargs)
+        paginated = PaginationUtil.paginate(
+            categories, page_number=page_number, page_size=page_count
+        )
+        info.context.pagination = paginated
+        return paginated.pop("items")
+

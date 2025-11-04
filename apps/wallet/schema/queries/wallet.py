@@ -17,7 +17,6 @@ from utils.wallet_utils.transactions import TransactionUtil
 
 
 class Query(graphene.ObjectType):
-    pagination = graphene.JSONString()
 
     business_assets = graphene.List(
         FinancialAssetType,
@@ -32,6 +31,7 @@ class Query(graphene.ObjectType):
         TransactionType,
         wallet_id=graphene.String(),
         business_id=graphene.String(),
+        id=graphene.String(),
         status=graphene.String(),
         search=graphene.String(),
         page_count=graphene.Int(),
@@ -65,7 +65,7 @@ class Query(graphene.ObjectType):
         pagination_data = PaginationUtil.paginate(
             assets, kwargs.get("page_number", 1), kwargs.get("page_count", 10)
         )
-        Query.pagination = pagination_data
+        info.context.pagination = pagination_data
         assets = pagination_data.pop("items")
         return assets
 
@@ -84,7 +84,7 @@ class Query(graphene.ObjectType):
         txns = TransactionUtil.get_transaction(False, search_filter=search_filter, **_filter)
         paginated_txns = PaginationUtil.paginate(txns, page_number, page_count)
         txns = paginated_txns.pop("items", [])
-        Query.pagination = paginated_txns
+        info.context.pagination = paginated_txns
         return txns
 
 
@@ -93,9 +93,9 @@ class Query(graphene.ObjectType):
 
         search_filter = Q()
         [
-            wallet_id, business_id, status, search
+            wallet_id, business_id, status, search, _id
         ] = KwargUtil.cherry_pick_data(
-            initial_data, ["wallet_id", "business_id", "status", "search"]
+            initial_data, ["wallet_id", "business_id", "status", "search", "id"]
         )
         _filter = {}
         if wallet_id:
@@ -106,6 +106,9 @@ class Query(graphene.ObjectType):
         else:
             _filter["business__id"] = business_id
             _filter["client__isnull"] = False
+        
+        if _id:
+            _filter["id"] = _id
 
         if status:
             _filter["status"] = status
@@ -129,8 +132,4 @@ class Query(graphene.ObjectType):
         txn = TransactionUtil.get_transaction(id=txn_id)
         return txn
 
-    @login_required
-    def resolve_pagination(
-        self, info
-    ) -> Union[dict, None]:
-        return Query.pagination
+

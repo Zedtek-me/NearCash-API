@@ -2,6 +2,8 @@ from typing import Union, Optional, Type, List
 import logging
 
 from django.db import transaction
+from django.db.models import QuerySet, Q
+
 
 from apps.core.models import (
     Business, BusinessTransactionPolicy,
@@ -162,3 +164,35 @@ class CoreUtil:
         if category_id:
             clients = clients.filter(category__id=category_id)
         return clients
+
+
+    @classmethod
+    def get_business_client_categories(
+        cls, user: User, data: dict
+    ) -> QuerySet:
+        """
+        returns a list of categories created so far
+        in the current business
+        """
+        from utils.core_utils.business_utils import BusinessUtil
+
+        business_id = data.get("business_id")
+        search = data.get("search")
+        _id = data.get("id")
+        business_filter = {"id": business_id}
+        business = BusinessUtil.get_business(business_filter)
+        if not business or business.owner != user:
+            raise CustomException(
+                "invalid business id provided for current user!"
+            )
+        kwarg_filter = {}
+        search_filter = Q()
+        if _id:
+            kwarg_filter["id"] = _id
+        if search:
+            search_filter = Q(name__icontains=search) | Q(description__icontains=search)
+        categories = BusinessClientCategory.objects.filter(
+            search_filter, business=business,
+            **kwarg_filter
+        )
+        return categories

@@ -1,4 +1,4 @@
-from graphene import Schema, ObjectType
+from graphene import Schema, ObjectType, JSONString
 from apps.auths.schema.mutations.auth_mutations import Mutation as AuthMutation
 from apps.auths.schema.queries.auth_queries import Query as AuthQuery
 from apps.auths.schema.mutations.user_mutations import Mutation as UserMutation
@@ -17,7 +17,11 @@ class RootQuery(
     """
     Root query for the GraphQL schema.
     """
-    pass
+    pagination = JSONString()
+
+    def resolve_pagination(self, info):
+        return info.context.pagination
+
 
 class RootMutation(
     AuthMutation,
