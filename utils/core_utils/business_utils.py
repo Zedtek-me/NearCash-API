@@ -314,3 +314,19 @@ class BusinessUtil:
         ).aggregate(extra_charge_val=Sum(Cast("extra_charge__amount", output_field=FloatField())))\
             .get("extra_charge_val")
         return extra_charge_val or 0.0
+
+    @classmethod
+    def get_client_latest_location(
+        cls, client_id, **kwargs
+    ) -> Union[CurrentLocation, dict]:
+        client = User.objects.filter(id=client_id, meta__user_type="CLIENT").first()
+        if not client:
+            logger.debug(f"could not find client with id: {client_id}")
+            return {}
+        client_latest_loc: CurrentLocation | None = client.current_locations.first()
+        if not client_latest_loc:
+            return {}
+        return {
+            "longitude": client_latest_loc.location.x,
+            "latitude": client_latest_loc.location.y
+        }

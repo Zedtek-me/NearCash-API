@@ -63,7 +63,7 @@ class CurrentLocationAdmin(admin.ModelAdmin):
     ]
     search_fields = [
         "user__email__iexact", "user__first_name__icontains", "user__last_name__icontains",
-        "business__name__icontains", "location_type__longitude", "location_type__latitude"
+        "business__name__icontains", "location_type__icontains", "location_type__icontains"
     ]
-    list_filter = ("date_created", "last_updated")
+    list_filter = ("date_created", "last_updated", "location_type")
     readonly_fields = ("location_type", "id")

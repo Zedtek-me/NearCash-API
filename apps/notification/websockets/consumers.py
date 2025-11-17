@@ -93,6 +93,20 @@ class NotificationConsumer(JsonWebsocketConsumer):
                     }
                 }
             )
+        if msg_type == "retrieve_client_latest_location":
+            client_id = text_data.get("client_id")
+            loc = BusinessUtil.get_client_latest_location(client_id)
+            async_to_sync(self.channel_layer.group_send)(
+                self.general_notification_group_name,
+                {
+                    "type": "send.notification",
+                    "message": {
+                        "message_type": "client_latest_location",
+                        "client_id": client_id,
+                        "location": loc
+                    }
+                }
+            )
         return
 
     def send_notification(self, event):

@@ -111,7 +111,7 @@ class Query(graphene.ObjectType):
             _filter["id"] = _id
 
         if status:
-            _filter["status"] = status
+            _filter["status__icontains"] = status
         if search:
             search_filter &= (
                 Q(txn_ref__icontains=search) |
