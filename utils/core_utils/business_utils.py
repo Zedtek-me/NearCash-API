@@ -31,6 +31,7 @@ from utils.helpers.exception import CustomException
 from utils.core_utils.location_utils import GeolocationUtils
 from utils.core_utils.core_utils import CoreUtil
 from utils.wallet_utils.transactions import TransactionUtil
+from utils.helpers.kwargs import KwargUtil
 
 from dtos.core_dtos.business_dtos import UpdateBusinessDto
 
@@ -176,8 +177,7 @@ class BusinessUtil:
 
     @classmethod
     def get_vendor_latest_location(
-        cls,  vendor_id: Union[str, int],
-        client_coordinate: Optional[dict] = None
+        cls,  **query_data: dict
     ) -> dict:
         """
         fetches the current location of a vendor
@@ -185,7 +185,15 @@ class BusinessUtil:
         """
 
         from apps.core.models import CurrentLocation
-
+        vendor_id = query_data.get("vendor_id")
+        txn_id = query_data.get("txn_id")
+        client_coordinate = None
+        txn = TransactionUtil.get_transaction(**{"id": txn_id})
+        if txn:
+            client_coordinate = {
+                "longitude": txn.meta.get("client_current_location", {}).get("longitude"),
+                "latitude": txn.meta.get("client_current_location", {}).get("latitude")
+            }
         vendor_user = User.objects.filter(id=vendor_id, meta__user_type="VENDOR").first()
         if not vendor_user:
             return {}
@@ -317,12 +325,25 @@ class BusinessUtil:
 
     @classmethod
     def get_client_latest_location(
-        cls, client_id, **kwargs
+        cls, **query_data: dict
     ) -> Union[CurrentLocation, dict]:
-        client = User.objects.filter(id=client_id, meta__user_type="CLIENT").first()
-        if not client:
-            logger.debug(f"could not find client with id: {client_id}")
+        from apps.core.models import BusinessClient
+
+        client_id = query_data.get("client_id")
+        trxn_id = query_data.get("txn_id")
+        trxn = TransactionUtil.get_transaction(**{"id": trxn_id})
+        vendor_business_id = trxn and trxn.business.id
+        buz_client = BusinessClient.objects.filter(
+            client__id=client_id, business__id=vendor_business_id
+        ).first()
+
+        if not buz_client:
+            logger.debug(
+                f"could not find client user with id: {client_id} "
+                f"for transaction business: {vendor_business_id}"
+            )
             return {}
+        client = buz_client and buz_client.client
         client_latest_loc: CurrentLocation | None = client.current_locations.first()
         if not client_latest_loc:
             return {}
@@ -330,3 +351,42 @@ class BusinessUtil:
             "longitude": client_latest_loc.location.x,
             "latitude": client_latest_loc.location.y
         }
+
+    @classmethod
+    def record_vendor_location(
+        cls, **content: dict
+    ) -> dict:
+
+        vendor_id = content.get("vendor_id")
+        business_id = content.get("business_id")
+        location = content.get("location")
+
+        if not location or not vendor_id:
+            raise CustomException("Invalid data provided for recording location")
+        vendor_user = User.objects.filter(id=vendor_id, meta__user_type="VENDOR").first()
+        location = cls.record_current_location(
+            vendor_user, location, location_type="Vendor",
+            business_id=business_id
+        )
+        return location
+
+    @classmethod
+    def record_client_location(
+        cls, **content: dict
+    ) -> dict:
+        from apps.core.models import BusinessClient
+
+        [
+            client_id, location
+        ] = KwargUtil.cherry_pick_data(
+            content, ["client_id", "location"]
+        )
+
+        if not (client_id and location):
+            raise CustomException("Invalid data provided for recording location")
+        client_user = User.objects.filter(id=client_id, meta__user_type="CLIENT").first()
+
+        location = cls.record_current_location(
+            client_user, location, "Client"
+        )
+        return location

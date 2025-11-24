@@ -8,7 +8,6 @@ from utils.notifications.notifications import NotificationUtil
 from utils.core_utils.business_utils import BusinessUtil
 from utils.helpers.exception import CustomException
 
-from apps.core.models import CurrentLocation
 
 from django.conf import settings
 
@@ -16,6 +15,25 @@ from django.conf import settings
 
 class NotificationConsumer(JsonWebsocketConsumer):
     """WebSocket consumer for handling notifications."""
+
+    MESSAGE_TYPE_HANDLERS = {
+        "vendor_location_update": {
+            "handler": BusinessUtil.record_vendor_location,
+            "response": {}
+        },
+        "client_location_update": {
+            "handler": BusinessUtil.record_client_location,
+            "response": {}
+        },
+        "retrieve_vendor_latest_location": {
+            "handler": BusinessUtil.get_vendor_latest_location,
+            "response": {}
+        },
+        "retrieve_client_latest_location": {
+            "handler": BusinessUtil.get_client_latest_location,
+            "response": {}
+        }
+    }
 
     general_notification_group_name = settings.GENERAL_NOTIFICATION_GROUP_NAME
 
@@ -41,72 +59,65 @@ class NotificationConsumer(JsonWebsocketConsumer):
         """Handle WebSocket disconnections."""
         super().disconnect(close_code)
 
-    def receive_json(self, text_data):
+    def receive_json(self, content: Union[dict, str], *args, **kwargs):
         """Handle incoming messages."""
-        from utils.wallet_utils.transactions import TransactionUtil
-        logger.debug(f"text data gotten on websocket msg receiver::::::::: {text_data}")
-        msg_type = text_data.get('message_type', "")
-        if msg_type and msg_type.lower() == "vendor_location_update":
-            vendor_id = text_data.get("vendor_id")
-            business_id = text_data.get("business_id")
-            location = text_data.get("location")
 
-            # record the vendor's location
-            try:
-                self._record_vendor_location(
-                    vendor_id=vendor_id,
-                    business_id=business_id,
-                    location=location
+        logger.debug(f"content gotten on websocket msg receiver::::::::: {content}")
+        msg_type = content.pop('message_type', "")
+
+        # handle message type
+        try:
+            vendor_id = content.get("vendor_id")
+            client_id = content.get("client_id")
+            handled_response = self.MESSAGE_TYPE_HANDLERS.get(msg_type, {})\
+                .get("handler")(**content)
+            response: dict = self.MESSAGE_TYPE_HANDLERS.get(msg_type, {}).get("response", {})
+        except Exception as e:
+            logger.error(f"Error recording vendor location: {e}")
+            self.send_json({
+                "message_type": "error",
+                "message": str(e)
+            })
+            return
+
+        match msg_type:
+            case "vendor_location_update":
+                response["message_type"] = "vendor_location_update_ack"
+                self.send_json(response)
+            case "client_location_update":
+                response["message_type"] = "client_location_update_ack"
+                self.send_json(response)
+            case "retrieve_vendor_latest_location":
+                response.update({
+                    "message_type": "vendor_latest_location",
+                    "vendor_id": vendor_id,
+                    "location": handled_response #will always be a dict for this msg type
+                })
+                async_to_sync(self.channel_layer.group_send)(
+                    self.general_notification_group_name,
+                    {
+                        "type": "send.notification",
+                        "message": response
+                    }
                 )
-            except Exception as e:
-                logger.error(f"Error recording vendor location: {e}")
+            case "retrieve_client_latest_location":
+                response.update({
+                    "message_type": "client_latest_location",
+                    "client_id": client_id,
+                    "location": handled_response #will always be a dict for this msg type
+                })
+                async_to_sync(self.channel_layer.group_send)(
+                    self.general_notification_group_name,
+                    {
+                        "type": "send.notification",
+                        "message": response
+                    }
+                )
+            case _:
                 self.send_json({
                     "message_type": "error",
-                    "message": str(e)
+                    "message": "message unknown!"
                 })
-                return
-            self.send_json({
-                "message_type": "vendor_location_update_ack",
-            })
-
-        if msg_type == "retrieve_vendor_latest_location":
-            vendor_id = text_data.get("vendor_id")
-            txn_id = text_data.get("txn_id")
-            client_coordinate = None
-            txn = TransactionUtil.get_transaction(**{"id": txn_id})
-            if txn:
-                client_coordinate = {
-                    "longitude": txn.meta.get("client_current_location", {}).get("longitude"),
-                    "latitude": txn.meta.get("client_current_location", {}).get("latitude")
-                }
-            vendor_latest_location = BusinessUtil.get_vendor_latest_location(
-                vendor_id, client_coordinate
-            )
-            async_to_sync(self.channel_layer.group_send)(
-                self.general_notification_group_name,
-                {
-                    "type": "send.notification",
-                    "message": {
-                        "message_type": "vendor_latest_location",
-                        "vendor_id": vendor_id,
-                        "location": vendor_latest_location
-                    }
-                }
-            )
-        if msg_type == "retrieve_client_latest_location":
-            client_id = text_data.get("client_id")
-            loc = BusinessUtil.get_client_latest_location(client_id)
-            async_to_sync(self.channel_layer.group_send)(
-                self.general_notification_group_name,
-                {
-                    "type": "send.notification",
-                    "message": {
-                        "message_type": "client_latest_location",
-                        "client_id": client_id,
-                        "location": loc
-                    }
-                }
-            )
         return
 
     def send_notification(self, event):
@@ -119,18 +130,3 @@ class NotificationConsumer(JsonWebsocketConsumer):
         if self.user:
             self.user.user_queue = f"{self.user.id}_queue"
 
-    def _record_vendor_location(self, **kwargs) -> CurrentLocation:
-        from apps.auths.models import User as UserModel
-
-        vendor_id = kwargs.get("vendor_id")
-        business_id = kwargs.get("business_id")
-        location = kwargs.get("location")
-
-        if not location or not vendor_id:
-            raise CustomException("Invalid data provided for recording location")
-        vendor_user = UserModel.objects.filter(id=vendor_id, meta__user_type="VENDOR").first()
-        location = BusinessUtil.record_current_location(
-            vendor_user, location, location_type="Vendor",
-            business_id=business_id
-        )
-        return location
