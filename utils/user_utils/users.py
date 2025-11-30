@@ -26,7 +26,8 @@ class UserUtil:
         user.meta.update({"user_type": user_type, "picture": picture_url})
         user.save()
         if phone_number and hasattr(user, "profile"):
-            user.profile.add(phone_number=phone_number)
+            user.profile.phone_number = phone_number
+            user.profile.save()
         if user_type == "VENDOR" and first_time:
             business_data = data.pop("business_data", {})
             BusinessUtil.create_business(
