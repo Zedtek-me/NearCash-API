@@ -129,4 +129,3 @@ class NotificationConsumer(JsonWebsocketConsumer):
         """Update the user's status to online."""
         if self.user:
             self.user.user_queue = f"{self.user.id}_queue"
-

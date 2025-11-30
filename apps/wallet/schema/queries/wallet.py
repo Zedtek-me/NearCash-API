@@ -33,6 +33,10 @@ class Query(graphene.ObjectType):
         business_id=graphene.String(),
         id=graphene.String(),
         status=graphene.String(),
+        date_from=graphene.Date(),
+        date_to=graphene.Date(),
+        client_id=graphene.String(),
+        vendor_id=graphene.String(),
         search=graphene.String(),
         page_count=graphene.Int(),
         page_number=graphene.Int()
@@ -93,9 +97,9 @@ class Query(graphene.ObjectType):
 
         search_filter = Q()
         [
-            wallet_id, business_id, status, search, _id
+            wallet_id, business_id, status, search, _id, client_id, vendor_id
         ] = KwargUtil.cherry_pick_data(
-            initial_data, ["wallet_id", "business_id", "status", "search", "id"]
+            initial_data, ["wallet_id", "business_id", "status", "search", "id", "client_id", "vendor_id"]
         )
         _filter = {}
         if wallet_id:
@@ -112,6 +116,10 @@ class Query(graphene.ObjectType):
 
         if status:
             _filter["status__icontains"] = status
+        if client_id:
+            _filter["client__id"] = client_id
+        if vendor_id:
+            _filter["vendor__id"] = vendor_id
         if search:
             search_filter &= (
                 Q(txn_ref__icontains=search) |

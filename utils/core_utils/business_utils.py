@@ -361,8 +361,10 @@ class BusinessUtil:
         business_id = content.get("business_id")
         location = content.get("location")
 
-        if not location or not vendor_id:
+        if not location or not business_id:
             raise CustomException("Invalid data provided for recording location")
+        business = cls.get_business({"id": business_id})
+        vendor_id = vendor_id or (business and business.owner.id)
         vendor_user = User.objects.filter(id=vendor_id, meta__user_type="VENDOR").first()
         location = cls.record_current_location(
             vendor_user, location, location_type="Vendor",
@@ -390,3 +392,52 @@ class BusinessUtil:
             client_user, location, "Client"
         )
         return location
+
+    @classmethod
+    def get_vendor_client_users(
+        clse, user: User, data: dict
+    ) -> QuerySet:
+        """
+        returns a list of all the clients that have patronized the given vendor
+        """
+        vendor_id = data.get("vendor_id")
+        category_id = data.get("category_id")
+        business_id = data.get("business_id")
+        _filter = {"business__owner__id": vendor_id, "business_id": business_id}
+        if category_id:
+            _filter["category_id"] = category_id
+        buz_client_ids = BusinessClient.objects.filter(**_filter)\
+            .order_by("client_id")\
+            .distinct("client_id")\
+            .values_list("client_id", flat=True)
+        buz_client_users = User.objects.filter(id__in=buz_client_ids)
+        return buz_client_users
+
+    @classmethod
+    def get_vendor_users(
+        cls, user: User, data: dict
+    ) -> QuerySet:
+        """
+        returns vendors that the given user has patronized as a client
+        """
+        is_client = user.meta.get("user_type", "") == "CLIENT"
+        vendor_id = data.get("vendor_id")
+        search = data.get("search")
+
+        search_filter = Q()
+
+        if not is_client:
+            raise CustomException("Only client can fetch all vendor's they've patronized!")
+        trxns = user.client_transactions.all()
+        if vendor_id:
+            trxns = trxns.filter(vendor_id=vendor_id)
+        trxn_vendor_ids = trxns.values_list("vendor_id", flat=True)
+        if search:
+            search_filter = (
+                Q(email__icontains=search) |
+                Q(username__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search)
+            )
+        vendors_users = User.objects.filter(search_filter, id__in=trxn_vendor_ids)
+        return vendors_users

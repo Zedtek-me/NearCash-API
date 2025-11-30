@@ -84,6 +84,25 @@ class Query(graphene.ObjectType):
         page_number=graphene.Int(default_value=1)
     )
 
+    clients = graphene.List(
+        UserType,
+        vendor_id=graphene.String(required=True),
+        business_id=graphene.String(required=True),
+        category_id=graphene.String(),
+        search=graphene.String(),
+        page_count=graphene.Int(),
+        page_number=graphene.Int()
+    )
+
+    vendors = graphene.List(
+        UserType,
+        vendor_id=graphene.String(),
+        business_id=graphene.String(),
+        search=graphene.String(),
+        page_count=graphene.Int(),
+        page_number=graphene.Int()
+    )
+
     @login_required
     def resolve_business(self, info, **kwargs) -> BusinessType:
         """single business"""
@@ -230,3 +249,26 @@ class Query(graphene.ObjectType):
         info.context.pagination = paginated
         return paginated.pop("items")
 
+    @login_required
+    def resolve_clients(self, info, **kwargs):
+        user = info.context.user
+        page_count = kwargs.pop("page_count", 10)
+        page_number = kwargs.pop("page_number", 1)
+        client_users = BusinessUtil.get_vendor_client_users(user, kwargs)
+
+        paginated = PaginationUtil.paginate(client_users, page_number, page_count)
+        info.context.pagination = paginated
+        return paginated.pop("items", [])
+
+    @login_required
+    def resolve_vendors(
+        self, info, **kwargs
+    ):
+        user = info.context.user
+        page_count = kwargs.pop("page_count", 10)
+        page_number = kwargs.pop("page_number", 1)
+        vendor_users = BusinessUtil.get_vendor_users(user, kwargs)
+
+        paginated = PaginationUtil.paginate(vendor_users, page_number, page_count)
+        info.context.pagination = paginated
+        return paginated.pop("items", [])
