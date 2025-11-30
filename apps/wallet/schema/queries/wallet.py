@@ -97,9 +97,14 @@ class Query(graphene.ObjectType):
 
         search_filter = Q()
         [
-            wallet_id, business_id, status, search, _id, client_id, vendor_id
+            wallet_id, business_id, status, search, _id, client_id, vendor_id,
+            date_from, date_to
         ] = KwargUtil.cherry_pick_data(
-            initial_data, ["wallet_id", "business_id", "status", "search", "id", "client_id", "vendor_id"]
+            initial_data, [
+                "wallet_id", "business_id", "status",
+                "search", "id", "client_id", "vendor_id",
+                "date_from", "date_to"
+            ]
         )
         _filter = {}
         if wallet_id:
@@ -120,6 +125,10 @@ class Query(graphene.ObjectType):
             _filter["client__id"] = client_id
         if vendor_id:
             _filter["vendor__id"] = vendor_id
+        if date_from:
+            _filter["date_created__date__gte"] = date_from
+        if date_to:
+            _filter["date_created__date__lte"] = date_to
         if search:
             search_filter &= (
                 Q(txn_ref__icontains=search) |
