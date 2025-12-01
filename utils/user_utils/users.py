@@ -16,7 +16,7 @@ class UserUtil:
         cls, user: User, data: dict
     ) -> Optional[User]:
         """updates existing user data"""
-        user_type = cls._parse_user_type(data.pop("user_type", None))
+        user_type = user.meta.get("user_type") or cls._parse_user_type(data.pop("user_type", None)) #use user default type for now, pending the implementation of user_type update
         first_time = cls.check_first_time(user)
         picture_url = data.pop("picture", None) or user.meta.get("picture")
         phone_number = data.pop("phone_number", None)
