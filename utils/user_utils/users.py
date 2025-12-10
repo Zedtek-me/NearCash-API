@@ -28,6 +28,8 @@ class UserUtil:
         if phone_number and hasattr(user, "profile"):
             user.profile.phone_number = phone_number
             user.profile.save()
+        user.profile.profile_picture = picture_url
+        user.profile.save()
         if user_type == "VENDOR" and first_time:
             business_data = data.pop("business_data", {})
             BusinessUtil.create_business(

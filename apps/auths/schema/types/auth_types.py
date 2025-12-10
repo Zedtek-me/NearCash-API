@@ -16,6 +16,7 @@ class UserType(DjangoObjectType):
     user_type = graphene.String()
     full_name = graphene.String()
     phone_number = graphene.String()
+    profile_picture = graphene.String()
 
     def resolve_user_type(self, info):
         return self.meta.get("user_type", "CLIENT")
@@ -30,6 +31,12 @@ class UserType(DjangoObjectType):
             logger.error(f"Error fetching phone number for user {self.id}: {e}")
             return None
 
+    def resolve_profile_picture(self, info):
+        try:
+            return self.profile.profile_picture
+        except Exception as e:
+            logger.error(f"Error fetching profile picture for user {self.id}: {e}")
+            return None
 
 
 class LoginInfoType(ObjectType):
