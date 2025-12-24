@@ -6,6 +6,7 @@ from utils.helpers.logs import logger
 
 from apps.auths.models import User
 from apps.auths.schema.types.enums import UserTypeEnum
+from apps.auths.models import UserProfile
 
 class UserUtil:
     def __init__(self):
@@ -25,11 +26,12 @@ class UserUtil:
                 setattr(user, key, value)
         user.meta.update({"user_type": user_type, "picture": picture_url})
         user.save()
-        if phone_number and hasattr(user, "profile"):
-            user.profile.phone_number = phone_number
-            user.profile.save()
-        user.profile.profile_picture = picture_url
-        user.profile.save()
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        if phone_number:
+            profile.phone_number = phone_number
+
+        profile.profile_picture = picture_url
+        profile.save()
         if user_type == "VENDOR" and first_time:
             business_data = data.pop("business_data", {})
             BusinessUtil.create_business(
