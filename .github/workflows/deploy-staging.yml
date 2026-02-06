@@ -18,11 +18,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up SSH
+      - name: Install sshpass
         run: |
-          apt-get update -y && apt-get install -y sshpass
-          mkdir -p ~/.ssh
-          echo "$SERVER_PASSWORD" | sshpass ssh-copy-id -o StrictHostKeyChecking=no $SERVER_USERNAME@$SEVER_IP
+          apt-get update -y
+          apt-get install -y sshpass
 
       - name: Login And Deploy to staging server
         run: |
