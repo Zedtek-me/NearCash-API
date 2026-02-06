@@ -1,0 +1,36 @@
+name: Deploy nearcash api staging
+
+on:
+  push:
+    branches:
+      - develop
+
+env:
+  SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
+  SEVER_IP: ${{ secrets.SERVER_IP }}
+  SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH
+        run: |
+          apt-get update -y && apt-get install -y sshpass
+          mkdir -p ~/.ssh
+          echo "$SERVER_PASSWORD" | sshpass ssh-copy-id -o StrictHostKeyChecking=no $SERVER_USERNAME@$SEVER_IP
+
+      - name: Login And Deploy to staging server
+        run: |
+          ssh -o StrictHostKeyChecking=no $SERVER_USERNAME@$SEVER_IP << 'EOF'
+            cd NearCashBackend
+            echo "current directory:::::::: $(pwd)"
+            echo "pulling latest code from develop branch"
+            git pull origin develop --rebase
+            echo "building and restarting the application using docker compose"
+            docker compose -f nearcash-compose.yml up --build -d api redis rabbitmq database celery_worker
+          EOF
