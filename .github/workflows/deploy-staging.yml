@@ -21,8 +21,8 @@ jobs:
       - name: Deploy to staging
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: $SERVER_IP
-          username: $SERVER_USERNAME
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd NearCashBackend
