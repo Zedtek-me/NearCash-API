@@ -7,7 +7,7 @@ on:
 
 env:
   SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
-  SEVER_IP: ${{ secrets.SERVER_IP }}
+  SERVER_IP: ${{ secrets.SERVER_IP }}
   SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
   SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
