@@ -9,27 +9,22 @@ env:
   SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
   SEVER_IP: ${{ secrets.SERVER_IP }}
   SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+  SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
 jobs:
   deploy-staging:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install sshpass
-        run: |
-          apt-get update -y
-          apt-get install -y sshpass
-
-      - name: Login And Deploy to staging server
-        run: |
-          ssh -o StrictHostKeyChecking=no $SERVER_USERNAME@$SEVER_IP << 'EOF'
+      - name: Deploy to staging
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: $SERVER_IP
+          username: $SERVER_USERNAME
+          key: $SSH_PRIVATE_KEY
+          script: |
             cd NearCashBackend
-            echo "current directory:::::::: $(pwd)"
-            echo "pulling latest code from develop branch"
             git pull origin develop --rebase
-            echo "building and restarting the application using docker compose"
             docker compose -f nearcash-compose.yml up --build -d api redis rabbitmq database celery_worker
-          EOF
