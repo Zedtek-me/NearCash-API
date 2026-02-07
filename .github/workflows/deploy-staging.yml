@@ -23,7 +23,7 @@ jobs:
         with:
           host: $SERVER_IP
           username: $SERVER_USERNAME
-          key: $SSH_PRIVATE_KEY
+          key: ${{ SSH_PRIVATE_KEY }}
           script: |
             cd NearCashBackend
             git pull origin develop --rebase
