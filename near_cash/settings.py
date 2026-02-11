@@ -57,7 +57,10 @@ INSTALLED_APPS = [
     "apps.notification",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = config(
+    "ALLOWED_ORIGINS", cast=lambda v: [s.strip() for s in v.split(',')], default='http://localhost:3000'
+)
 CORS_ALLOWED_HEADERS = [
     *default_headers,
 ]
