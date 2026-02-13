@@ -89,6 +89,7 @@ class Query(graphene.ObjectType):
         vendor_id=graphene.String(required=True),
         business_id=graphene.String(required=True),
         category_id=graphene.String(),
+        client_id=graphene.String(),
         search=graphene.String(),
         page_count=graphene.Int(),
         page_number=graphene.Int()
