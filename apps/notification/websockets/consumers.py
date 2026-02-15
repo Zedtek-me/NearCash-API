@@ -5,7 +5,6 @@ from channels.generic.websocket import JsonWebsocketConsumer
 
 from utils.helpers.logs import logger
 from utils.notifications.notifications import NotificationUtil
-from utils.core_utils.business_utils import BusinessUtil
 from utils.helpers.exception import CustomException
 
 
@@ -15,6 +14,7 @@ from django.conf import settings
 
 class NotificationConsumer(JsonWebsocketConsumer):
     """WebSocket consumer for handling notifications."""
+    from utils.core_utils.business_utils import BusinessUtil
 
     MESSAGE_TYPE_HANDLERS = {
         "vendor_location_update": {
