@@ -4,8 +4,6 @@ from channels.layers import get_channel_layer
 
 from django.conf import settings
 
-from apps.auths.models import User
-
 from typing import Union, Any, Optional
 
 
@@ -13,7 +11,7 @@ class NotificationUtil:
 
     @classmethod
     def add_user_to_needed_groups(
-        cls, user: User, channel_name: str, *group_names
+        cls, user, channel_name: str, *group_names
     ) -> Union[None, Any]:
         """Add the user to necessary groups."""
         channel_layer = get_channel_layer()
