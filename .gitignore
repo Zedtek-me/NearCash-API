@@ -2,3 +2,4 @@
 near_cash_venv
 *__pycache__*
 oauth_client_ids.json
+staticfiles
