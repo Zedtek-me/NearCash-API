@@ -7,8 +7,6 @@ from graphql_jwt.utils import jwt_decode
 from channels.db import database_sync_to_async
 from asgiref.sync import async_to_sync
 
-from django.contrib.auth.models import AnonymousUser
-
 logger = logging.getLogger("nearcash")
 logger.setLevel(logging.DEBUG)
 
@@ -74,6 +72,8 @@ class CustomSocketAuthMiddleware:
         scope["auth_token"] = token
 
     def _set_anonymous_user(self):
+        from django.contrib.auth.models import AnonymousUser
+
         self.scope["user"] = AnonymousUser()
 
 
