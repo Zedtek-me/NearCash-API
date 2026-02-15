@@ -14,32 +14,32 @@ from django.conf import settings
 
 class NotificationConsumer(JsonWebsocketConsumer):
     """WebSocket consumer for handling notifications."""
-    from utils.core_utils.business_utils import BusinessUtil
-
-    MESSAGE_TYPE_HANDLERS = {
-        "vendor_location_update": {
-            "handler": BusinessUtil.record_vendor_location,
-            "response": {}
-        },
-        "client_location_update": {
-            "handler": BusinessUtil.record_client_location,
-            "response": {}
-        },
-        "retrieve_vendor_latest_location": {
-            "handler": BusinessUtil.get_vendor_latest_location,
-            "response": {}
-        },
-        "retrieve_client_latest_location": {
-            "handler": BusinessUtil.get_client_latest_location,
-            "response": {}
-        }
-    }
-
     general_notification_group_name = settings.GENERAL_NOTIFICATION_GROUP_NAME
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from apps.auths.models import User as UserModel
+        from utils.core_utils.business_utils import BusinessUtil
+
+        self.MESSAGE_TYPE_HANDLERS = {
+            "vendor_location_update": {
+                "handler": BusinessUtil.record_vendor_location,
+                "response": {}
+            },
+            "client_location_update": {
+                "handler": BusinessUtil.record_client_location,
+                "response": {}
+            },
+            "retrieve_vendor_latest_location": {
+                "handler": BusinessUtil.get_vendor_latest_location,
+                "response": {}
+            },
+            "retrieve_client_latest_location": {
+                "handler": BusinessUtil.get_client_latest_location,
+                "response": {}
+            }
+        }
+
 
         self.user: Optional[UserModel] = None
 
