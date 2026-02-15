@@ -38,7 +38,7 @@ class BusinessUtil:
 
     @classmethod
     def create_business(
-        cls, user: User, data: dict
+        cls, user, data: dict
     ) -> Business:
         """creates a vendor business"""
 
@@ -142,7 +142,7 @@ class BusinessUtil:
 
     @classmethod
     def fetch_business_txn_policy_for_current_client(
-        cls, client: User, business_id: Union[int, str]
+        cls, client, business_id: Union[int, str]
     ) -> Optional[BusinessTransactionPolicy]:
         """
         checks if the current client is added to any
@@ -167,7 +167,7 @@ class BusinessUtil:
 
     @classmethod
     def initiate_transaction(
-        cls, client: User, data: dict,
+        cls, client, data: dict,
     ) -> Transaction:
         """client initiates transaction to a vendor"""
         txn = ClientService.initiate_transaction(client, data)
@@ -223,7 +223,7 @@ class BusinessUtil:
 
     @classmethod
     def record_current_location(
-        cls, user: User, location: dict, location_type: str = "Vendor",
+        cls, user, location: dict, location_type: str = "Vendor",
         **kwargs
     ) -> CurrentLocation:
         """
@@ -398,7 +398,7 @@ class BusinessUtil:
 
     @classmethod
     def get_vendor_client_users(
-        clse, user: User, data: dict
+        clse, user, data: dict
     ) -> QuerySet:
         """
         returns a list of all the clients that have patronized the given vendor
@@ -420,7 +420,7 @@ class BusinessUtil:
 
     @classmethod
     def get_vendor_users(
-        cls, user: User, data: dict
+        cls, user, data: dict
     ) -> QuerySet:
         """
         returns vendors that the given user has patronized as a client
