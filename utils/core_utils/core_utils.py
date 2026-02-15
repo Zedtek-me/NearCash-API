@@ -11,8 +11,6 @@ from apps.core.models import (
 )
 from apps.core.schema.types.business_types import CashCollectionModes
 
-from apps.auths.models import User
-
 from utils.helpers.exception import CustomException
 
 logger = logging.getLogger("nearcash")
@@ -81,12 +79,13 @@ class CoreUtil:
 
     @classmethod
     def add_client_to_category(
-        cls, user: User, data: Union[
+        cls, user, data: Union[
             Type["AddClientToCategoryInputType"], dict
         ]
     ) -> List[BusinessClient]:
         """adds a client to a business category"""
         from utils.core_utils.business_utils import BusinessUtil
+        from apps.auths.models import User
 
         category_id = data.get("category_id")
         client_ids = data.get("client_ids")
@@ -126,7 +125,7 @@ class CoreUtil:
 
     @classmethod
     def get_or_create_user_as_business_client(
-        cls, client: User, business: Business, category: Optional[BusinessClientCategory] = None
+        cls, client, business: Business, category: Optional[BusinessClientCategory] = None
     ) -> BusinessClient:
         """creates a user as a client for the given business"""
         if existing_client := BusinessClient.objects.filter(
@@ -141,7 +140,7 @@ class CoreUtil:
 
     @classmethod
     def get_business_clients(
-        cls, user: User, data: dict
+        cls, user, data: dict
     ) -> BusinessClient:
         """
         returns clients that have patronized a business.
@@ -168,7 +167,7 @@ class CoreUtil:
 
     @classmethod
     def get_business_client_categories(
-        cls, user: User, data: dict
+        cls, user, data: dict
     ) -> QuerySet:
         """
         returns a list of categories created so far

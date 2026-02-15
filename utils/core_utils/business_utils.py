@@ -11,7 +11,6 @@ from django.db.models import (
 from django.db.models.functions import Cast
 from django.utils import timezone
 
-from apps.auths.models import User
 from apps.core.models import (
     Business, BusinessTransactionPolicy,
     BusinessClientCategory, BusinessClient,
@@ -404,6 +403,8 @@ class BusinessUtil:
         """
         returns a list of all the clients that have patronized the given vendor
         """
+        from apps.auths.models import User
+
         vendor_id = data.get("vendor_id")
         category_id = data.get("category_id")
         business_id = data.get("business_id")
