@@ -185,6 +185,8 @@ class BusinessUtil:
         """
 
         from apps.core.models import CurrentLocation
+        from apps.auths.models import User
+
         vendor_id = query_data.get("vendor_id")
         txn_id = query_data.get("txn_id")
         client_coordinate = None
@@ -356,6 +358,7 @@ class BusinessUtil:
     def record_vendor_location(
         cls, **content: dict
     ) -> dict:
+        from apps.auths.models import User
 
         vendor_id = content.get("vendor_id")
         business_id = content.get("business_id")
@@ -377,6 +380,7 @@ class BusinessUtil:
         cls, **content: dict
     ) -> dict:
         from apps.core.models import BusinessClient
+        from apps.auths.models import User
 
         [
             client_id, location
@@ -420,6 +424,8 @@ class BusinessUtil:
         """
         returns vendors that the given user has patronized as a client
         """
+        from apps.auths.models import User
+
         is_client = user.meta.get("user_type", "") == "CLIENT"
         vendor_id = data.get("vendor_id")
         search = data.get("search")
