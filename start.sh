@@ -4,7 +4,7 @@ echo "running migrations"
 python3 -m manage migrate --noinput
 python3 -m manage collectstatic --noinput --clear --link
 echo "starting server..."
-daphne near_cash.asgi:application --bind 0.0.0.0 -p 3000
+daphne near_cash.asgi:application -b 0.0.0.0 -p 3000
 
 # gunicorn extra deployment args
 # --workers 4 \
