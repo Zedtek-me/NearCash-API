@@ -232,8 +232,15 @@ class BusinessUtil:
         business = None
         if location_type.title() == "Vendor":
             business = cls.get_business({"id": kwargs.get("business_id")})
-
-        loc = CurrentLocation(
+        loc = cls._fetch_existing_user_location(
+            user=user,
+            location_type=location_type.title(),
+            business=business
+        )
+        if loc:
+            loc.location = Point(location.get("longitude"), location.get("latitude"), srid=4326)
+        else:
+            loc = CurrentLocation(
             user=user,
             location=Point(location.get("longitude"), location.get("latitude"), srid=4326),
             location_type=location_type.title(),
@@ -241,6 +248,12 @@ class BusinessUtil:
         )
         loc.save()
         return loc
+
+    @classmethod
+    def _fetch_existing_user_location(
+        cls, user, **kwargs
+    ) -> Optional[CurrentLocation]:
+        return user.current_locations.filter(**kwargs).first()
 
     @classmethod
     def get_txn_analytics(
