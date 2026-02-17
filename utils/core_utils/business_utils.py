@@ -375,10 +375,14 @@ class BusinessUtil:
         vendor_id = content.get("vendor_id")
         business_id = content.get("business_id")
         location = content.get("location")
+        trxn_id = content.get("txn_id")
 
-        if not location or not business_id:
-            raise CustomException("Invalid data provided for recording location")
         business = cls.get_business({"id": business_id})
+        trxn: Union[Transaction, None] = TransactionUtil.get_transaction(**{"id": trxn_id})
+        if not business_id or not business and trxn:
+            business = trxn.business
+        if not location or not business:
+            raise CustomException("Invalid data provided for recording location")
         vendor_id = vendor_id or (business and business.owner.id)
         vendor_user = User.objects.filter(id=vendor_id, meta__user_type="VENDOR").first()
         location = cls.record_current_location(
