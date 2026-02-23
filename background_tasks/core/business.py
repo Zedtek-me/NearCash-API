@@ -78,9 +78,9 @@ class BusinessAsyncOperations:
 
         # send email notification
         # TODO: update the email data context with a reverse geocoded address for the client current location
-        EmailService().send_email(
-            **email_data, raw=False
-        )
+        # EmailService().send_email(
+        #     **email_data, raw=False
+        # )
 
         # send sms notification
         return
@@ -144,4 +144,4 @@ class BusinessAsyncOperations:
             "recipients": [txn.client.email],
             "context": txn_info
         }
-        EmailService().send_email(**email_data, raw=False)
+        # EmailService().send_email(**email_data, raw=False)
