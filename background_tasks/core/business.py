@@ -58,7 +58,7 @@ class BusinessAsyncOperations:
         notification_data = {
             "type": "send.notification",
             "message": {
-                "title": "New Transaction Interest",
+                "message_type": "New Transaction Interest",
                 "txn_info": txn_info
             }
         }
@@ -132,7 +132,7 @@ class BusinessAsyncOperations:
                 {
                     "type": "send.notification",
                     "message": {
-                        "title": "Vendor Accepted Transaction Request",
+                        "message_type": "Vendor Accepted Transaction Request",
                         "txn_info": txn_info
                     }
                 }
