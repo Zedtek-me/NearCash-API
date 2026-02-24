@@ -57,6 +57,8 @@ class NotificationConsumer(JsonWebsocketConsumer):
 
     def disconnect(self, close_code):
         """Handle WebSocket disconnections."""
+        if self.user and not self.user.is_anonymous:
+            NotificationUtil.remove_users_from_needed_groups(self.user, self.channel_name)
         super().disconnect(close_code)
 
     def receive_json(self, content: Union[dict, str], *args, **kwargs):

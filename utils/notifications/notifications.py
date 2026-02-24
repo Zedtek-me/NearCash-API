@@ -34,3 +34,37 @@ class NotificationUtil:
                 channel_name
             )
         return user
+
+
+    @classmethod
+    def remove_users_from_needed_groups(
+        cls, user, channel_name: str, *group_names
+    ) -> Union[None, Any]:
+        """
+        cleanly removes users from the groups they were added to when they disconnect
+        """
+        channel_layer = get_channel_layer()
+
+        general_notification_group = settings.GENERAL_NOTIFICATION_GROUP_NAME
+
+        # general group
+        async_to_sync(
+            channel_layer.group_discard)(
+            general_notification_group,
+            channel_name
+        )
+
+        # personal group
+        async_to_sync(
+            channel_layer.group_discard)(
+            user.user_queue,
+            channel_name
+        )
+
+        # other groups specified
+        for group in group_names:
+            async_to_sync(
+                channel_layer.group_discard)(
+                group,
+                channel_name
+            )
