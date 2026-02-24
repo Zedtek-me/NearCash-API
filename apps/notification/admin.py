@@ -19,6 +19,6 @@ class NotificationAdmin(admin.ModelAdmin):
         "date_created", "last_updated", "content_type", "object_id", "title", "message"
     ]
     fields = [
-        "title", "message", "content_type", "object_id", "date_created", "last_updated",
-        "meta"
+        "title", "message", "content_type", "object_id", "date_created",
+        "last_updated", "meta"
     ]

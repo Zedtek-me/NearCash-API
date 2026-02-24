@@ -64,6 +64,7 @@ class BusinessAsyncOperations:
                 f"{txn.amount} {txn.currency}."
             ),
             extra_data=txn_info,
+            entity=txn.business #entity here is the vendor business
         )
         notification_data = {
             "type": "send.notification",
@@ -120,6 +121,7 @@ class BusinessAsyncOperations:
         notifies the client of the transaction status update via email and websocket
         """
         from utils.wallet_utils.transactions import TransactionUtil
+        from utils.notifications.notifications import NotificationUtil
         from apps.notification.email.app_emails import EmailService
 
         txn = TransactionUtil.get_transaction(**{"id": txn_id})
@@ -134,6 +136,17 @@ class BusinessAsyncOperations:
                         "vendor_phone_number": txn.vendor.phone_number if txn.vendor else "",
                         "client_current_location": txn.meta.get("client_current_location", {})
                     }
+
+        # capture notification in db
+        NotificationUtil.record_notification(
+            title="New Transaction Interest",
+            body=(
+                f"{txn.client.full_name} is interested in a transaction of amount "
+                f"{txn.amount} {txn.currency}."
+            ),
+            extra_data=txn_info,
+            entity=txn.client #entity here is the client
+        )
 
         async_to_sync(
             channel_layer.group_send

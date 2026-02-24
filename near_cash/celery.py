@@ -21,7 +21,11 @@ class BaseTask(Task):
 
 app = Celery(
     'near_cash', 
-    include=["background_tasks.core.business", "background_tasks.wallet"],
+    include=[
+        "background_tasks.core.business",
+        "background_tasks.wallet",
+        "utils.notifications.notifications"
+    ],
     task_cls=BaseTask,
     namespace="CELERY"
 )

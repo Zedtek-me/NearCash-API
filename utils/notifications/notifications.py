@@ -4,11 +4,13 @@ from celery import shared_task
 from channels.layers import get_channel_layer
 
 from django.conf import settings
+from django.db.models import Model
 
 from typing import Union, Any, Optional
 
 from apps.notification.models import Notification
 from apps.auths.models import User
+from apps.core.models import Business
 
 
 class NotificationUtil:
@@ -76,7 +78,7 @@ class NotificationUtil:
 
     @classmethod
     def record_notification(
-        cls, title: str, body: str, user: Optional[User] = None,
+        cls, title: str, body: str, entity: Optional[Model] = None,
         extra_data: Optional[dict] = None
     ) -> Notification:
         """
@@ -89,11 +91,11 @@ class NotificationUtil:
             message=body,
             meta=extra_data or {}
         )
-        if user and not user.is_anonymous:
-            user_content_type = ContentType.objects.get_for_model(user)
-            notif.content_type = user_content_type
-            notif.object_id = user.id
-            notif.content_object = user
+        if entity:
+            entity_content_type = ContentType.objects.get_for_model(entity)
+            notif.content_type = entity_content_type
+            notif.object_id = entity.id
+            notif.content_object = entity
         notif.save()
 
 
@@ -105,20 +107,21 @@ class NotificationUtil:
             "title" in kwargs and "body" in kwargs
         ):
             raise ValueError("Title and body are required to create a notification.")
-        if "user_id" in kwargs:
+
+        notif_data = {
+            "title": kwargs.pop("title"),
+            "body": kwargs.pop("body"),
+            "extra_data": kwargs
+        }
+        if "user_id" in kwargs and kwargs.get("user_id") is not None:
             user = User.objects.filter(id=kwargs["user_id"]).first()
             if not user:
                 raise ValueError(f"User with id {kwargs['user_id']} not found.")
-            NotificationUtil.record_notification(
-                title=kwargs.pop("title"),
-                body=kwargs.pop("body"),
-                user=user,
-                extra_data=kwargs
-            )
-            return
-        NotificationUtil.record_notification(
-            title=kwargs.pop("title"),
-            body=kwargs.pop("body"),
-            extra_data=kwargs
-        )
+            notif_data["entity"] = user
+        if "business_id" in kwargs and kwargs.get("business_id") is not None:
+            business = Business.objects.filter(id=kwargs["business_id"]).first()
+            if not business:
+                raise ValueError(f"Business with id {kwargs['business_id']} not found.")
+            notif_data["entity"] = business
+        NotificationUtil.record_notification(**notif_data)
         return
