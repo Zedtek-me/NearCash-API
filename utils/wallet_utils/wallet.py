@@ -39,7 +39,11 @@ class WalletUtil:
                     **asset_data
                 )
             assets.append(asset)
-        assets = FinancialAsset.objects.bulk_create(assets, update_conflicts=True)
+        assets = FinancialAsset.objects.bulk_create(
+            assets, update_conflicts=True,
+            update_fields=["range", "charge_rate"],
+            unique_fields=["id"]
+        )
         return assets
 
     @classmethod

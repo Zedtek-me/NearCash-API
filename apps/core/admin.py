@@ -9,7 +9,7 @@ from .models import (
 class BusinessAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'name', 'owner', 'date_created', 'last_updated', 'country', 'currency', 'status',
-        'parent_business_id'
+        'parent_business_id', "is_primary", "is_online"
     )
     search_fields = (
         'name__icontains', 'owner__email__iexact', 'owner__username__icontains',
