@@ -130,4 +130,4 @@ class NotificationConsumer(JsonWebsocketConsumer):
     def _update_user_channel(self) -> None:
         """Update the user's status to online."""
         if self.user:
-            self.user.user_queue = f"{self.user.id}_queue"
+            self.user.user_queue = f"user_{self.user.id}_queue"
