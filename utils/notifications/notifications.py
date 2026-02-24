@@ -5,6 +5,8 @@ from channels.layers import get_channel_layer
 
 from django.conf import settings
 from django.db.models import Model
+from django.db.models import QuerySet, Q
+from django.contrib.contenttypes.models import ContentType
 
 from typing import Union, Any, Optional
 
@@ -84,8 +86,6 @@ class NotificationUtil:
         """
         Persists notification data to the database.
         """
-        from django.contrib.contenttypes.models import ContentType
-
         notif = Notification(
             title=title,
             message=body,
@@ -125,3 +125,40 @@ class NotificationUtil:
             notif_data["entity"] = business
         NotificationUtil.record_notification(**notif_data)
         return
+
+
+    @classmethod
+    def fetch_notifications(
+        cls, user_id: Union[str, int, None] = None,
+        business_id: Union[str, int, None] = None,
+        search: Optional[Union[str, Q]] = None,
+        **kwargs
+    ) -> QuerySet:
+        """
+        fetches notifications for a user or business
+        """
+        content_type = None
+        user = None
+        business = None
+        search = search or Q()
+        notifications = Notification.objects.filter(search).order_by("-date_created")
+
+        if user_id:
+            user = User.objects.filter(id=user_id).first()
+            content_type = ContentType.objects.get_for_model(user)
+        if business_id:
+            business = Business.objects.filter(id=business_id).first()
+            content_type = ContentType.objects.get_for_model(business)
+        if user:
+            notifications = notifications.filter(
+                content_type=content_type,
+                object_id=user.id
+            )
+        if business:
+            notifications = notifications.filter(
+                content_type=content_type,
+                object_id=business.id
+            )
+        # all other filter params
+        notifications = notifications.filter(**kwargs)
+        return notifications

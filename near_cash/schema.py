@@ -7,11 +7,13 @@ from apps.wallet.schema.queries.wallet import Query as WalletQuery
 from apps.core.schema.mutations.business_mutations import Mutation as BusinessMutation
 from apps.core.schema.mutations.client_mutations import Mutation as ClientMutation
 from apps.core.schema.queries.business_queries import Query as BusinessQuery
+from apps.notification.schema.queries.notification_queries import Query as NotificationQuery
 
 class RootQuery(
     AuthQuery,
     WalletQuery,
     BusinessQuery,
+    NotificationQuery,
     ObjectType
 ):
     """
