@@ -29,6 +29,9 @@ class BusinessAsyncOperations:
         from apps.auths.models import User
         from utils.wallet_utils.transactions import TransactionUtil
         from utils.notifications.notifications import NotificationUtil
+        from apps.wallet.constants import (
+            DECLINED, INITIATED, CANCELLED
+        )
 
 
         channel_layer = get_channel_layer()
@@ -57,10 +60,19 @@ class BusinessAsyncOperations:
                 }
 
         # capture notification in db
+        if txn.status not in [
+            INITIATED, CANCELLED
+        ]:
+            return False
+        txn_status = txn_status.title()
+        title = (
+            "New Transaction Interest" if txn_status == "Initiated"
+            else f" Transaction {txn_status}"
+        )
         NotificationUtil.record_notification(
-            title="New Transaction Interest",
+            title=title,
             body=(
-                f"{txn.client.full_name} is interested in a transaction of amount "
+                f"{txn.client.full_name} has {txn_status} a transaction of amount "
                 f"{txn.amount} {txn.currency}."
             ),
             extra_data=txn_info,
@@ -123,9 +135,6 @@ class BusinessAsyncOperations:
         from utils.wallet_utils.transactions import TransactionUtil
         from utils.notifications.notifications import NotificationUtil
         from apps.notification.email.app_emails import EmailService
-        from apps.wallet.constants import (
-            DECLINED, IN_PROGRESS
-        )
 
         txn = TransactionUtil.get_transaction(**{"id": txn_id})
         channel_layer = get_channel_layer()
@@ -142,16 +151,17 @@ class BusinessAsyncOperations:
 
         # capture notification in db
         txn_status = txn.status.title()
+        txn_status = "Approved" if txn_status == "In_Progress" else txn_status
         business = txn.business
         title = (
-            f"Transaction { 'Approved!' if txn_status == 'In_Progress' else txn_status }"
-            if txn_status in [ "In_Progress", "Declined" ]
+            f"Transaction { txn_status }!"
+            if txn_status in [ "Approved", "Declined" ]
             else "Transaction Status Update"
         )
         NotificationUtil.record_notification(
             title=title,
             body=(
-                f"{business.name} has approved your transaction of amount "
+                f"{business.name} has {txn_status} your transaction of amount "
                 f"{txn.amount}{txn.currency}."
             ),
             extra_data=txn_info,
@@ -165,7 +175,7 @@ class BusinessAsyncOperations:
                 {
                     "type": "send.notification",
                     "message": {
-                        "message_type": "Vendor Accepted Transaction Request",
+                        "message_type": f"Vendor {txn_status} Transaction Request",
                         "txn_info": txn_info
                     }
                 }

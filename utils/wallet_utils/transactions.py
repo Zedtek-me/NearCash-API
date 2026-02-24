@@ -66,11 +66,15 @@ class TransactionUtil:
             )
         txn.status = status
         txn.save()
-        # tell client that the vendor has accepted the txn, and has started processing it already.
-        if status == IN_PROGRESS:
-            BusinessAsyncOperations.notify_client_of_txn_status.delay(
-                txn_id=txn.id
-            )
+        # if client is the one who cancelled, notify vendor
+        if status == CANCELLED and user.id == txn.client.id:
+            BusinessAsyncOperations.notify_vendor_about_transaction.delay(txn_id=txn.id)
+            return
+
+        # tell client about all transaction status update by vendor.
+        BusinessAsyncOperations.notify_client_of_txn_status.delay(
+            txn_id=txn.id
+        )
         return txn
 
     @shared_task(bind=True, name="update_inprogress_transactions", base=BaseTask)
