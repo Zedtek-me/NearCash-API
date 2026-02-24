@@ -59,7 +59,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                 NotificationUtil.add_user_to_needed_groups
             )(self.user, self.channel_name)
         await self.send_json(f"welcome {self.user.email}!")
-        await sync_to_async(
+        await database_sync_to_async(
             BusinessUtil.check_and_activate_vendor_businesses
         )(
             self.user, _all=True, skip_error=True
@@ -70,10 +70,10 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
         from utils.core_utils.business_utils import BusinessUtil
 
         if self.user and not self.user.is_anonymous:
-            sync_to_async(
+            await sync_to_async(
                 NotificationUtil.remove_users_from_needed_groups
             )(self.user, self.channel_name)
-            await sync_to_async(
+            await database_sync_to_async(
                 BusinessUtil.deactivate_businesses_for_vendor
             )(
                 self.user, _all=True, skip_error=True

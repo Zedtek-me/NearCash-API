@@ -78,7 +78,7 @@ class BusinessUtil:
             distance=Geodistance("geo_location", point)
         ).filter(
             geo_location__distance_lte=(point, radius)
-        ).order_by("distance")
+        ).order_by("distance", "is_online")
         nearest_business = businesses.values("distance").first()
         businesses = businesses.annotate(
                 nearest=Case(
@@ -535,4 +535,5 @@ class BusinessUtil:
                 raise CustomException("Business with the provided id does not exist!")
         else:
             businesses = cls.get_businesses(user, {"owner": user})
+        logger.debug(f"businesses to update to offline:::::::::::::: {businesses}")
         businesses.update(is_online=False)
