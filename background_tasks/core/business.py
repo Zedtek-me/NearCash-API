@@ -123,6 +123,9 @@ class BusinessAsyncOperations:
         from utils.wallet_utils.transactions import TransactionUtil
         from utils.notifications.notifications import NotificationUtil
         from apps.notification.email.app_emails import EmailService
+        from apps.wallet.constants import (
+            DECLINED, IN_PROGRESS
+        )
 
         txn = TransactionUtil.get_transaction(**{"id": txn_id})
         channel_layer = get_channel_layer()
@@ -138,11 +141,18 @@ class BusinessAsyncOperations:
                     }
 
         # capture notification in db
+        txn_status = txn.status.title()
+        business = txn.business
+        title = (
+            f"Transaction { 'Approved!' if txn_status == 'In_Progress' else txn_status }"
+            if txn_status in [ "In_Progress", "Declined" ]
+            else "Transaction Status Update"
+        )
         NotificationUtil.record_notification(
-            title="New Transaction Interest",
+            title=title,
             body=(
-                f"{txn.client.full_name} is interested in a transaction of amount "
-                f"{txn.amount} {txn.currency}."
+                f"{business.name} has approved your transaction of amount "
+                f"{txn.amount}{txn.currency}."
             ),
             extra_data=txn_info,
             entity=txn.client #entity here is the client
