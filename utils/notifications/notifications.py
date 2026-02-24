@@ -1,10 +1,14 @@
 from asgiref.sync import async_to_sync
+from celery import shared_task
 
 from channels.layers import get_channel_layer
 
 from django.conf import settings
 
 from typing import Union, Any, Optional
+
+from apps.notification.models import Notification
+from apps.auths.models import User
 
 
 class NotificationUtil:
@@ -68,3 +72,53 @@ class NotificationUtil:
                 group,
                 channel_name
             )
+
+
+    @classmethod
+    def record_notification(
+        cls, title: str, body: str, user: Optional[User] = None,
+        extra_data: Optional[dict] = None
+    ) -> Notification:
+        """
+        Persists notification data to the database.
+        """
+        from django.contrib.contenttypes.models import ContentType
+
+        notif = Notification(
+            title=title,
+            message=body,
+            meta=extra_data or {}
+        )
+        if user and not user.is_anonymous:
+            user_content_type = ContentType.objects.get_for_model(user)
+            notif.content_type = user_content_type
+            notif.object_id = user.id
+            notif.content_object = user
+        notif.save()
+
+
+    @shared_task(bind=True, name="create_notification_task")
+    def create_notification_async(
+        self, **kwargs
+    ) -> None:
+        if not (
+            "title" in kwargs and "body" in kwargs
+        ):
+            raise ValueError("Title and body are required to create a notification.")
+        if "user_id" in kwargs:
+            user = User.objects.filter(id=kwargs["user_id"]).first()
+            if not user:
+                raise ValueError(f"User with id {kwargs['user_id']} not found.")
+            NotificationUtil.record_notification(
+                title=kwargs.pop("title"),
+                body=kwargs.pop("body"),
+                user=user,
+                extra_data=kwargs
+            )
+            return
+        NotificationUtil.record_notification(
+            title=kwargs.pop("title"),
+            body=kwargs.pop("body"),
+            extra_data=kwargs
+        )
+        return

@@ -28,6 +28,7 @@ class BusinessAsyncOperations:
         from apps.notification.email.app_emails import EmailService
         from apps.auths.models import User
         from utils.wallet_utils.transactions import TransactionUtil
+        from utils.notifications.notifications import NotificationUtil
 
 
         channel_layer = get_channel_layer()
@@ -55,6 +56,15 @@ class BusinessAsyncOperations:
                     "vendor_phone_number": vendor.phone_number
                 }
 
+        # capture notification in db
+        NotificationUtil.record_notification(
+            title="New Transaction Interest",
+            body=(
+                f"{txn.client.full_name} is interested in a transaction of amount "
+                f"{txn.amount} {txn.currency}."
+            ),
+            extra_data=txn_info,
+        )
         notification_data = {
             "type": "send.notification",
             "message": {

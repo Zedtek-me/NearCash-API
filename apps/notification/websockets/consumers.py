@@ -5,7 +5,6 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 
 from utils.helpers.logs import logger
-from utils.notifications.notifications import NotificationUtil
 from utils.helpers.exception import CustomException
 
 
@@ -47,6 +46,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         """Handle new WebSocket connections."""
         from utils.core_utils.business_utils import BusinessUtil
+        from utils.notifications.notifications import NotificationUtil
 
         self.user = self.scope.get('user')
         if not self.user or self.user.is_anonymous:
@@ -68,6 +68,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
     async def disconnect(self, close_code):
         """Handle WebSocket disconnections."""
         from utils.core_utils.business_utils import BusinessUtil
+        from utils.notifications.notifications import NotificationUtil
 
         if self.user and not self.user.is_anonymous:
             await sync_to_async(
