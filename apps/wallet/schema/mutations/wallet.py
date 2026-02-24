@@ -33,7 +33,7 @@ class CreateFinancialAsset(graphene.Mutation):
             raise CustomException(
                 "You do not have permission to create financial assets for this business."
             )
-        assets = WalletUtil.create_financial_assets(
+        assets = WalletUtil.create_or_update_financial_assets(
             business=business,
             data=data
         )

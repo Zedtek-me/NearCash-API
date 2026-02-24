@@ -11,7 +11,7 @@ class WalletUtil:
     """all utilities related to wallet operations"""
 
     @classmethod
-    def create_financial_assets(
+    def create_or_update_financial_assets(
         cls, business: Business, data: List[Dict[str, Union[str, float]]]
     ) -> List[Dict[str, Union[str, float]]]:
         """
@@ -23,12 +23,23 @@ class WalletUtil:
         """
         assets = []
         for asset_data in data:
-            asset = FinancialAsset(
-                business=business,
-                **asset_data
-            )
+            if asset_data.get("id") is not None:
+                if not (asset := FinancialAsset.objects.filter(
+                    id=asset_data["id"],
+                    business=business
+                ).first()):
+                    raise CustomException(
+                        "Financial asset with the provided ID does not exist for this business."
+                    )
+                asset.range = asset_data["range"]
+                asset.charge_rate = asset_data["charge_rate"]
+            else:
+                asset = FinancialAsset(
+                    business=business,
+                    **asset_data
+                )
             assets.append(asset)
-        assets = FinancialAsset.objects.bulk_create(assets)
+        assets = FinancialAsset.objects.bulk_create(assets, update_conflicts=True)
         return assets
 
     @classmethod

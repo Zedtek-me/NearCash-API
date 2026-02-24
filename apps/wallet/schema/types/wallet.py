@@ -33,6 +33,7 @@ class AssetInputType(graphene.InputObjectType):
     """
     Input type for creating or updating financial assets.
     """
+    id = graphene.String(required=False)
     range = graphene.String(required=True)
     charge_rate = graphene.Float(required=True)
 

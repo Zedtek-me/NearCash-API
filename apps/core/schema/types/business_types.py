@@ -82,7 +82,9 @@ class CreateBusinessInputType(graphene.InputObjectType):
     address = graphene.String(required=False)
 
 class UpdateBusinessInputType(CreateBusinessInputType):
+    is_online = graphene.Boolean(required=False)
     business_name = graphene.String(required=False)
+    address = graphene.String(required=False)
 
 class RouteInputType(graphene.InputObjectType):
     start_long = graphene.Float(required=True)

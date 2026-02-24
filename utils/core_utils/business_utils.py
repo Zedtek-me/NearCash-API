@@ -18,7 +18,7 @@ from apps.core.models import (
 )
 
 from apps.core.services import ClientService
-
+from apps.auths.models import User
 
 from apps.core.constants import LOCATION_SERVICES
 from apps.wallet.models import Transaction
@@ -98,7 +98,7 @@ class BusinessUtil:
     @classmethod
     def get_businesses(
         cls, user: Type["User"], data: dict
-    ) -> List[Business]:
+    ) -> QuerySet:
         """returns all the businesses for a user"""
         filter_params = {"owner": user}
         if data.get("id"):
@@ -118,9 +118,12 @@ class BusinessUtil:
 
     @classmethod
     def update_business(
-        cls, business: Business, data: Union[UpdateBusinessDto, dict]
+        cls, business: Business, data: Union[UpdateBusinessDto, dict],
+        financial_assets: Optional[List[dict]] = None
     )-> Optional[Business]:
         """updates a business"""
+        from utils.wallet_utils.wallet import WalletUtil
+
         updated_address = None
         for field, value in data.items():
             if hasattr(business, field) and value is not None:
@@ -138,6 +141,10 @@ class BusinessUtil:
                 coordinates.get("latitude", 0), srid=4326
             )
         business.save()
+        if financial_assets is not None:
+            WalletUtil.create_or_update_financial_assets(
+                business, financial_assets
+            )
         return business
 
     @classmethod
@@ -465,3 +472,67 @@ class BusinessUtil:
             )
         vendors_users = User.objects.filter(search_filter, id__in=trxn_vendor_ids)
         return vendors_users
+
+
+    @classmethod
+    def check_and_activate_vendor_businesses(
+        cls, user: User, _all: Optional[bool] = False,
+        business_id: Union[None, str, int] = None,
+        skip_error: Optional[bool] = False
+    ) -> None:
+        """
+        sets the vendor businesses to active when they're logged in, and connected to websocket
+        """
+        user_type = user.meta.get("user_type", "").upper()
+        not_a_vendor = user_type != "VENDOR"
+
+        if not_a_vendor and not skip_error:
+            raise CustomException("You're not allowed to perform this action!")
+        if not_a_vendor:
+            return
+
+        if not _all and not business_id:
+            raise CustomException(
+                "Please specify the business to activate or "
+                "set _all to true to activate all businesses!"
+            )
+        businesses = Business.objects.none()
+        if business_id:
+            businesses = cls.get_businesses(user, {"id": business_id})
+            if not businesses or not businesses.first():
+                raise CustomException("Business with the provided id does not exist!")
+        else:
+            businesses = cls.get_businesses(user, {"owner": user})
+        businesses.update(is_online=True)
+
+
+    @classmethod
+    def deactivate_businesses_for_vendor(
+        cls, user: User, _all: Optional[bool] = False,
+        business_id: Union[None, str, int] = None, skip_error: Optional[bool] = False
+    ) -> None:
+        """
+        sets the vendor businesses to offline when they're logged out, and disconnected from websocket
+        """
+        user_type = user.meta.get("user_type", "").upper()
+        not_a_vendor = user_type != "VENDOR"
+
+        if not_a_vendor and not skip_error:
+            raise CustomException("You're not allowed to perform this action!")
+
+        if not_a_vendor:
+            return
+
+        if not _all and not business_id:
+            raise CustomException(
+                "Please specify the business to deactivate or "
+                "set _all to true to deactivate all businesses!"
+            )
+        businesses = Business.objects.none()
+        if business_id:
+            businesses = cls.get_businesses(user, {"id": business_id})
+            if not businesses or not businesses.first():
+                raise CustomException("Business with the provided id does not exist!")
+        else:
+            businesses = cls.get_businesses(user, {"owner": user})
+        businesses.update(is_online=False)

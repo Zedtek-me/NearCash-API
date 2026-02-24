@@ -43,7 +43,7 @@ class CreateBusiness(graphene.Mutation):
         business_data = UserUtil.prepare_business_data(data)
         business = BusinessUtil.create_business(user, business_data)
         if financial_assets:
-            WalletUtil.create_financial_assets(
+            WalletUtil.create_or_update_financial_assets(
                 business, financial_assets
             )
         return CreateBusiness(
@@ -58,6 +58,9 @@ class UpdateBusiness(graphene.Mutation):
     class Arguments:
         business_id = graphene.String(required=True)
         update_data = UpdateBusinessInputType(required=False)
+        financial_assets = graphene.List(
+            AssetInputType, required=False
+        )
 
     @login_required
     @transaction.atomic
@@ -71,7 +74,10 @@ class UpdateBusiness(graphene.Mutation):
             raise CustomException(
                 message=f"invalid business id: {business_id}"
             )
-        business = BusinessUtil.update_business(business, kwargs.get("update_data"))
+        business = BusinessUtil.update_business(
+            business, kwargs.get("update_data"),
+            financial_assets=kwargs.get("financial_assets", [])
+        )
         return UpdateBusiness(
             message="Business successfully updated",
             business=business

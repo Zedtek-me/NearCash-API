@@ -31,6 +31,7 @@ class Business(BaseModel):
         geography=True, srid=4326
     )
     is_primary = models.BooleanField(default=False)
+    is_online = models.BooleanField(default=True)
 
     class Meta(BaseModel.Meta):
         db_table = 'business'

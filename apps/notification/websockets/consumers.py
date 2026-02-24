@@ -1,7 +1,8 @@
 from typing import Any, Dict, Union, Optional, Type
 
 from asgiref.sync import sync_to_async, async_to_sync
-from channels.generic.websocket import JsonWebsocketConsumer
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from channels.db import database_sync_to_async
 
 from utils.helpers.logs import logger
 from utils.notifications.notifications import NotificationUtil
@@ -12,7 +13,7 @@ from django.conf import settings
 
 
 
-class NotificationConsumer(JsonWebsocketConsumer):
+class NotificationConsumer(AsyncJsonWebsocketConsumer):
     """WebSocket consumer for handling notifications."""
     general_notification_group_name = settings.GENERAL_NOTIFICATION_GROUP_NAME
 
@@ -23,19 +24,19 @@ class NotificationConsumer(JsonWebsocketConsumer):
 
         self.MESSAGE_TYPE_HANDLERS = {
             "vendor_location_update": {
-                "handler": BusinessUtil.record_vendor_location,
+                "handler": sync_to_async(BusinessUtil.record_vendor_location),
                 "response": {}
             },
             "client_location_update": {
-                "handler": BusinessUtil.record_client_location,
+                "handler": sync_to_async(BusinessUtil.record_client_location),
                 "response": {}
             },
             "retrieve_vendor_latest_location": {
-                "handler": BusinessUtil.get_vendor_latest_location,
+                "handler": sync_to_async(BusinessUtil.get_vendor_latest_location),
                 "response": {}
             },
             "retrieve_client_latest_location": {
-                "handler": BusinessUtil.get_client_latest_location,
+                "handler": sync_to_async(BusinessUtil.get_client_latest_location),
                 "response": {}
             }
         }
@@ -43,25 +44,43 @@ class NotificationConsumer(JsonWebsocketConsumer):
 
         self.user: Optional[UserModel] = None
 
-    def connect(self):
+    async def connect(self):
         """Handle new WebSocket connections."""
+        from utils.core_utils.business_utils import BusinessUtil
+
         self.user = self.scope.get('user')
         if not self.user or self.user.is_anonymous:
-            self.close(code=4000)
+            await self.close(code=4000)
             return
 
-        self.accept()
-        self._update_user_channel()
-        NotificationUtil.add_user_to_needed_groups(self.user, self.channel_name)
-        self.send_json(f"welcome {self.user.email}!")
+        await self.accept()
+        await database_sync_to_async(self._update_user_channel)()
+        await sync_to_async(
+                NotificationUtil.add_user_to_needed_groups
+            )(self.user, self.channel_name)
+        await self.send_json(f"welcome {self.user.email}!")
+        await sync_to_async(
+            BusinessUtil.check_and_activate_vendor_businesses
+        )(
+            self.user, _all=True, skip_error=True
+        )
 
-    def disconnect(self, close_code):
+    async def disconnect(self, close_code):
         """Handle WebSocket disconnections."""
-        if self.user and not self.user.is_anonymous:
-            NotificationUtil.remove_users_from_needed_groups(self.user, self.channel_name)
-        super().disconnect(close_code)
+        from utils.core_utils.business_utils import BusinessUtil
 
-    def receive_json(self, content: Union[dict, str], *args, **kwargs):
+        if self.user and not self.user.is_anonymous:
+            sync_to_async(
+                NotificationUtil.remove_users_from_needed_groups
+            )(self.user, self.channel_name)
+            await sync_to_async(
+                BusinessUtil.deactivate_businesses_for_vendor
+            )(
+                self.user, _all=True, skip_error=True
+            )
+        await super().disconnect(close_code)
+
+    async def receive_json(self, content: Union[dict, str], *args, **kwargs):
         """Handle incoming messages."""
 
         logger.debug(f"content gotten on websocket msg receiver::::::::: {content}")
@@ -71,12 +90,12 @@ class NotificationConsumer(JsonWebsocketConsumer):
         try:
             vendor_id = content.get("vendor_id")
             client_id = content.get("client_id")
-            handled_response = self.MESSAGE_TYPE_HANDLERS.get(msg_type, {})\
+            handled_response = await self.MESSAGE_TYPE_HANDLERS.get(msg_type, {})\
                 .get("handler")(**content)
             response: dict = self.MESSAGE_TYPE_HANDLERS.get(msg_type, {}).get("response", {})
         except Exception as e:
-            logger.error(f"Error recording vendor location: {e}")
-            self.send_json({
+            logger.exception(f"Error recording vendor location: {e}")
+            await self.send_json({
                 "message_type": "error",
                 "message": str(e)
             })
@@ -85,17 +104,17 @@ class NotificationConsumer(JsonWebsocketConsumer):
         match msg_type:
             case "vendor_location_update":
                 response["message_type"] = "vendor_location_update_ack"
-                self.send_json(response)
+                await self.send_json(response)
             case "client_location_update":
                 response["message_type"] = "client_location_update_ack"
-                self.send_json(response)
+                await self.send_json(response)
             case "retrieve_vendor_latest_location":
                 response.update({
                     "message_type": "vendor_latest_location",
                     "vendor_id": vendor_id,
                     "location": handled_response #will always be a dict for this msg type
                 })
-                async_to_sync(self.channel_layer.group_send)(
+                await self.channel_layer.group_send(
                     self.general_notification_group_name,
                     {
                         "type": "send.notification",
@@ -108,7 +127,7 @@ class NotificationConsumer(JsonWebsocketConsumer):
                     "client_id": client_id,
                     "location": handled_response #will always be a dict for this msg type
                 })
-                async_to_sync(self.channel_layer.group_send)(
+                await self.channel_layer.group_send(
                     self.general_notification_group_name,
                     {
                         "type": "send.notification",
@@ -116,15 +135,15 @@ class NotificationConsumer(JsonWebsocketConsumer):
                     }
                 )
             case _:
-                self.send_json({
+                await self.send_json({
                     "message_type": "error",
                     "message": "message unknown!"
                 })
         return
 
-    def send_notification(self, event):
+    async def send_notification(self, event):
         """Send a notification to the WebSocket."""
-        self.send_json(content=event["message"])
+        await self.send_json(content=event["message"])
 
 
     def _update_user_channel(self) -> None:
