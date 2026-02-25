@@ -64,7 +64,7 @@ class BusinessAsyncOperations:
             INITIATED, CANCELLED
         ]:
             return False
-        txn_status = txn_status.title()
+        txn_status = txn.status.title()
         title = (
             "New Transaction Interest" if txn_status == "Initiated"
             else f" Transaction {txn_status}"
