@@ -97,7 +97,7 @@ class BusinessUtil:
 
     @classmethod
     def get_businesses(
-        cls, user: Type["User"], data: dict
+        cls, user: Type["User"], data: dict, search: Q = Q()
     ) -> QuerySet:
         """returns all the businesses for a user"""
         filter_params = {"owner": user}
@@ -112,6 +112,7 @@ class BusinessUtil:
             filter_params["address__icontains"] = data["address"]
 
         businesses = Business.objects.filter(
+            search,
             **filter_params
         )
         return businesses
@@ -125,10 +126,13 @@ class BusinessUtil:
         from utils.wallet_utils.wallet import WalletUtil
 
         updated_address = None
+        explicit_business_online_status = False
         for field, value in data.items():
             if hasattr(business, field) and value is not None:
                 if field == "address":
                     updated_address = value
+                if field == "is_online":
+                    explicit_business_online_status = value
                 setattr(business, field, value)
         if updated_address:
             google_service = LOCATION_SERVICES.get("google")
@@ -140,6 +144,8 @@ class BusinessUtil:
                 coordinates.get("longitude", 0),
                 coordinates.get("latitude", 0), srid=4326
             )
+        if explicit_business_online_status:
+            business.meta["explicit_online_status"] = explicit_business_online_status
         business.save()
         if financial_assets is not None:
             WalletUtil.create_or_update_financial_assets(
@@ -496,13 +502,18 @@ class BusinessUtil:
                 "Please specify the business to activate or "
                 "set _all to true to activate all businesses!"
             )
+        #so we don't automatically turn on a business the vendor explicitly turned offline previously.
+        search_filter = (
+            ~Q(meta__has_key="explicit_online_status") |
+            Q(meta__has_key="explicit_online_status", meta__explicit_online_status=True)
+        )
         businesses = Business.objects.none()
         if business_id:
-            businesses = cls.get_businesses(user, {"id": business_id})
+            businesses = cls.get_businesses(user, {"id": business_id}, search_filter)
             if not businesses or not businesses.first():
                 raise CustomException("Business with the provided id does not exist!")
         else:
-            businesses = cls.get_businesses(user, {"owner": user})
+            businesses = cls.get_businesses(user, {"owner": user}, search_filter)
         businesses.update(is_online=True)
 
 

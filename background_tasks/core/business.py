@@ -1,7 +1,7 @@
 from celery import shared_task, Task
 from typing import Union
 
-from typing import Type
+from typing import Type, Optional
 from django.utils import timezone
 
 from typing import Type
@@ -11,6 +11,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from utils.helpers.logs import logger
+from utils.helpers.exception import CustomException
 
 from dtos.generics import EmailArgsDto
 
@@ -33,12 +34,11 @@ class BusinessAsyncOperations:
             DECLINED, INITIATED, CANCELLED
         )
 
-
-        channel_layer = get_channel_layer()
         txn = TransactionUtil.get_transaction(**{"id": txn_id})
         if not txn:
             logger.error(f"Transaction with id {txn_id} not found.")
             return False
+
         txn_client: User = txn.client
         BusinessAsyncOperations.update_client_last_patronized(
             txn_client, txn
@@ -47,53 +47,7 @@ class BusinessAsyncOperations:
         if not vendor:
             return False
 
-        txn_info = {
-                    "txn_ref": txn.txn_ref,
-                    "client_id": txn.client.id,
-                    "amount": txn.amount,
-                    "client_current_location": txn.meta.get("client_current_location", {}),
-                    "mode": txn.collection_mode,
-                    "vendor_name": vendor.full_name,
-                    "client_name": txn.client.full_name,
-                    "client_phone_number": txn.client.phone_number,
-                    "vendor_phone_number": vendor.phone_number
-                }
-
-        # capture notification in db
-        if txn.status not in [
-            INITIATED, CANCELLED
-        ]:
-            return False
-        txn_status = txn.status.title()
-        title = (
-            "New Transaction Interest" if txn_status == "Initiated"
-            else f" Transaction {txn_status}"
-        )
-        NotificationUtil.record_notification(
-            title=title,
-            body=(
-                f"{txn.client.full_name} has {txn_status} a transaction of amount "
-                f"{txn.amount} {txn.currency}."
-            ),
-            extra_data=txn_info,
-            entity=txn.business #entity here is the vendor business
-        )
-        notification_data = {
-            "type": "send.notification",
-            "message": {
-                "message_type": "New Transaction Interest",
-                "txn_info": txn_info
-            }
-        }
-
-        # publish push notification
-        logger.debug("about to publish websocket notification from celery worker!!!!!")
-        async_to_sync(
-        channel_layer.group_send
-        )(
-            vendor.user_queue, notification_data
-        )
-        logger.debug("websocket notification successully published from celery worker!!!!!!!!")
+        txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(txn)
         email_data: EmailArgsDto = {
             "subject": "New Transaction Interest",
             "body": "new_txn_interest.html",
@@ -140,16 +94,9 @@ class BusinessAsyncOperations:
 
         txn = TransactionUtil.get_transaction(**{"id": txn_id})
         channel_layer = get_channel_layer()
-        txn_info = {
-                        "txn_ref": txn.txn_ref,
-                        "status": txn.status,
-                        "amount": txn.amount,
-                        "vendor_name": (txn.vendor and txn.vendor.full_name) or "",
-                        "client_name": txn.client.full_name,
-                        "client_phone_number": txn.client.phone_number,
-                        "vendor_phone_number": txn.vendor.phone_number if txn.vendor else "",
-                        "client_current_location": txn.meta.get("client_current_location", {})
-                    }
+        txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
+            txn, for_vendor=False
+        )
 
         # capture notification in db
         txn_status = txn.status.title()
@@ -170,7 +117,6 @@ class BusinessAsyncOperations:
             entity=txn.client #entity here is the client
         )
 
-        logger.debug("about to publish websocket notification from celery worker!!!!!")
         async_to_sync(
             channel_layer.group_send
         )(
@@ -183,7 +129,6 @@ class BusinessAsyncOperations:
                     }
                 }
             )
-        logger.debug("websocket notification successully published from celery worker!!!!!!!!")
 
         email_data: EmailArgsDto = {
             "subject": "Transaction is being processed!",
@@ -192,3 +137,41 @@ class BusinessAsyncOperations:
             "context": txn_info
         }
         # EmailService().send_email(**email_data, raw=False)
+
+
+    @classmethod
+    def get_txn_info_for_async_ops(
+        cls, txn, skip_error: bool = False, for_vendor: bool = True
+    ) -> Optional[dict]:
+        from apps.auths.models import User
+
+        vendor: User | None = txn.vendor
+        if not vendor and not skip_error:
+            raise CustomException(
+                f"transaction with id: {txn.id} has no vendor attached!"
+            )
+
+        txn_info = {
+                    "txn_ref": txn.txn_ref,
+                    "client_id": txn.client.id,
+                    "amount": txn.amount,
+                    "client_current_location": txn.meta.get("client_current_location", {}),
+                    "mode": txn.collection_mode,
+                    "vendor_name": vendor.full_name,
+                    "client_name": txn.client.full_name,
+                    "client_phone_number": txn.client.phone_number,
+                    "vendor_phone_number": vendor.phone_number
+                }
+
+        if not for_vendor:
+            txn_info = {
+                        "txn_ref": txn.txn_ref,
+                        "status": txn.status,
+                        "amount": txn.amount,
+                        "vendor_name": (txn.vendor and txn.vendor.full_name) or "",
+                        "client_name": txn.client.full_name,
+                        "client_phone_number": txn.client.phone_number,
+                        "vendor_phone_number": txn.vendor.phone_number if txn.vendor else "",
+                        "client_current_location": txn.meta.get("client_current_location", {})
+                    }
+        return txn_info

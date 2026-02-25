@@ -13,6 +13,12 @@ from typing import Union, Any, Optional
 from apps.notification.models import Notification
 from apps.auths.models import User
 from apps.core.models import Business
+from apps.wallet.models import Transaction
+from apps.wallet.constants import (
+    INITIATED, CANCELLED
+)
+
+from utils.helpers.logs import logger
 
 
 class NotificationUtil:
@@ -162,3 +168,76 @@ class NotificationUtil:
         # all other filter params
         notifications = notifications.filter(**kwargs)
         return notifications
+
+
+    @classmethod
+    def send_socket_notification(
+        cls, txn: Transaction, for_vendor_notif = True
+    ) -> bool:
+        from background_tasks.core.business import BusinessAsyncOperations
+
+        channel_layer = get_channel_layer()
+        try:
+            # capture notification in db
+            if for_vendor_notif and txn.status not in [
+                INITIATED, CANCELLED
+            ]:
+                return False
+
+            txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(txn)
+            txn_status = txn.status.title()
+            txn_status = "Approved" if txn_status == "In_Progress" else txn_status
+            vendor: User = txn.vendor
+            business: Business = txn.business
+            title = (
+                "New Transaction Interest" if txn_status == "Approved"
+                else f" Transaction {txn_status}"
+            )
+            body = (
+                    f"{txn.client.full_name} has {txn_status} a transaction of amount "
+                    f"{txn.amount} {txn.currency}."
+                )
+            user_id = None
+            business_id = None
+
+            if for_vendor_notif:
+                business_id = business.id
+            else:
+                user_id = txn.client.id
+                title = (
+                    f"Transaction { txn_status }!"
+                    if txn_status in [ "Approved", "Declined" ]
+                    else "Transaction Status Update"
+                )
+                body = (
+                    f"{business.name} has {txn_status} your transaction of amount "
+                    f"{txn.amount}{txn.currency}."
+                )
+            # asynchronously persists notif log in the db
+            cls.create_notification_async.delay(
+                title=title,
+                body=body,
+                user_id=user_id,
+                business_id=business_id,
+                txn_info=txn_info
+            )
+            socket_notification_data = {
+                "type": "send.notification",
+                "message": {
+                    "message_type": (
+                        "New Transaction Interest" if txn_status == "Approved" and for_vendor_notif
+                        else f"Transaction {txn_status}!"
+                    ),
+                    "txn_info": txn_info
+                }
+            }
+            # publish push notification
+            async_to_sync(
+            channel_layer.group_send
+            )(
+                vendor.user_queue, socket_notification_data
+            )
+        except Exception as e:
+            logger.exception(f"exception when publishing socket notification>>>> {e}")
+            return False
+        return True

@@ -49,6 +49,7 @@ class TransactionUtil:
         depending on the status type.
         """
         from background_tasks.core.business import BusinessAsyncOperations
+        from utils.notifications.notifications import NotificationUtil
 
         txn = cls.get_transaction(
             id=data.get("txn_id"), only_one=True
@@ -68,10 +69,11 @@ class TransactionUtil:
         txn.save()
         # if client is the one who cancelled, notify vendor
         if status == CANCELLED and user.id == txn.client.id:
+            NotificationUtil.send_socket_notification(txn)
             BusinessAsyncOperations.notify_vendor_about_transaction.delay(txn_id=txn.id)
             return
 
-        # tell client about all transaction status update by vendor.
+        NotificationUtil.send_socket_notification(txn, for_vendor_notif=False)
         BusinessAsyncOperations.notify_client_of_txn_status.delay(
             txn_id=txn.id
         )

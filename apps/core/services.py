@@ -170,6 +170,7 @@ class ClientService:
     ) -> Transaction:
         """initiates a transaction interest by a client to a vendor"""
         from utils.wallet_utils.transactions import TransactionUtil
+        from utils.notifications.notifications import NotificationUtil
         from background_tasks.core.business import BusinessAsyncOperations
 
 
@@ -183,6 +184,8 @@ class ClientService:
             data, client, fin_asset
         )
         txn = TransactionUtil.create_transaction(**txn_data)
+        # send websocket notification to vendor before other async operations
+        NotificationUtil.send_socket_notification(txn)
         BusinessAsyncOperations.notify_vendor_about_transaction.delay(txn_id=txn.id)
         return txn
 
