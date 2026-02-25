@@ -146,7 +146,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
         """Send a notification to the WebSocket."""
         try:
             await self.send_json(content=event["message"])
-            logger.debug(f"message from event: {e} was successfully handled by consumer!!!")
+            logger.debug(f"message from event: {event} was successfully handled by consumer!!!")
         except Exception as e:
             logger.exception(f"exception in 'send_notification' consumer handler::: {e} ")
 
