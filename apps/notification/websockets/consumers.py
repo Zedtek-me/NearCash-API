@@ -54,11 +54,11 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
             return
 
         await self.accept()
+        await self.send_json(f"welcome {self.user.email}!")
         await database_sync_to_async(self._update_user_channel)()
         await sync_to_async(
                 NotificationUtil.add_user_to_needed_groups
             )(self.user, self.channel_name)
-        await self.send_json(f"welcome {self.user.email}!")
         await database_sync_to_async(
             BusinessUtil.check_and_activate_vendor_businesses
         )(
@@ -144,7 +144,11 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 
     async def send_notification(self, event):
         """Send a notification to the WebSocket."""
-        await self.send_json(content=event["message"])
+        try:
+            await self.send_json(content=event["message"])
+            logger.debug(f"message from event: {e} was successfully handled by consumer!!!")
+        except Exception as e:
+            logger.exception(f"exception in 'send_notification' consumer handler::: {e} ")
 
 
     def _update_user_channel(self) -> None:

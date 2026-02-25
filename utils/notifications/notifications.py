@@ -232,11 +232,11 @@ class NotificationUtil:
                 }
             }
             # publish push notification
+            logger.debug(f"about to publish socket notification to {'vendor' if for_vendor_notif else 'client'}!!!!!!")
             async_to_sync(
             channel_layer.group_send
-            )(
-                vendor.user_queue, socket_notification_data
-            )
+            )(vendor.user_queue, socket_notification_data)
+            logger.debug(f"notification published to {'vendor' if for_vendor_notif else 'client'}!!!!!!")
         except Exception as e:
             logger.exception(f"exception when publishing socket notification>>>> {e}")
             return False
