@@ -87,11 +87,13 @@ class BusinessAsyncOperations:
         }
 
         # publish push notification
+        logger.debug("about to publish websocket notification from celery worker!!!!!")
         async_to_sync(
         channel_layer.group_send
         )(
             vendor.user_queue, notification_data
         )
+        logger.debug("websocket notification successully published from celery worker!!!!!!!!")
         email_data: EmailArgsDto = {
             "subject": "New Transaction Interest",
             "body": "new_txn_interest.html",
@@ -168,6 +170,7 @@ class BusinessAsyncOperations:
             entity=txn.client #entity here is the client
         )
 
+        logger.debug("about to publish websocket notification from celery worker!!!!!")
         async_to_sync(
             channel_layer.group_send
         )(
@@ -180,6 +183,7 @@ class BusinessAsyncOperations:
                     }
                 }
             )
+        logger.debug("websocket notification successully published from celery worker!!!!!!!!")
 
         email_data: EmailArgsDto = {
             "subject": "Transaction is being processed!",
