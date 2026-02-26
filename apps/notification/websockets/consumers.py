@@ -54,7 +54,6 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
             return
 
         await self.accept()
-        await self.send_json(f"welcome {self.user.email}!")
         await database_sync_to_async(self._update_user_channel)()
         await sync_to_async(
                 NotificationUtil.add_user_to_needed_groups
@@ -64,6 +63,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
         )(
             self.user, _all=True, skip_error=True
         )
+        await self.send_json(f"welcome {self.user.email}!")
 
     async def disconnect(self, close_code):
         """Handle WebSocket disconnections."""
