@@ -226,7 +226,7 @@ class NotificationUtil:
                 "type": "send.notification",
                 "message": {
                     "message_type": (
-                        "New Transaction Interest" if txn_status == "Approved" and for_vendor_notif
+                        "New Transaction Interest" if txn_status == "Initiated" and for_vendor_notif
                         else f"Transaction {txn_status}!"
                     ),
                     "txn_info": txn_info
