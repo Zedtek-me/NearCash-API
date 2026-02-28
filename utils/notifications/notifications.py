@@ -191,7 +191,7 @@ class NotificationUtil:
             client: User = txn.client
             business: Business = txn.business
             title = (
-                "New Transaction Interest" if txn_status == "Approved"
+                "New Transaction Interest" if txn_status == "Initiated"
                 else f" Transaction {txn_status}"
             )
             body = (
