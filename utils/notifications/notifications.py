@@ -188,13 +188,14 @@ class NotificationUtil:
             txn_status = txn.status.title()
             txn_status = "Approved" if txn_status == "In_Progress" else txn_status
             vendor: User = txn.vendor
+            client: User = txn.client
             business: Business = txn.business
             title = (
                 "New Transaction Interest" if txn_status == "Approved"
                 else f" Transaction {txn_status}"
             )
             body = (
-                    f"{txn.client.full_name} has {txn_status} a transaction of amount "
+                    f"{client.full_name} has {txn_status} a transaction of amount "
                     f"{txn.amount} {txn.currency}."
                 )
             user_id = None
@@ -232,11 +233,13 @@ class NotificationUtil:
                 }
             }
             # publish push notification
-            logger.debug(f"about to publish socket notification to {'vendor' if for_vendor_notif else 'client'}!!!!!!")
+            channel = (
+                vendor.user_queue if for_vendor_notif
+                else client.user_queue
+            ) or ""
             async_to_sync(
-            channel_layer.group_send
-            )(vendor.user_queue, socket_notification_data)
-            logger.debug(f"notification published to {'vendor' if for_vendor_notif else 'client'}!!!!!!")
+                channel_layer.group_send
+            )(channel, socket_notification_data)
         except Exception as e:
             logger.exception(f"exception when publishing socket notification>>>> {e}")
             return False
