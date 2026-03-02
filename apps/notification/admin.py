@@ -7,7 +7,8 @@ from .models import Notification
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
     list_display = [
-        "id", "title", "message", "content_type", "object_id", "date_created", "last_updated"
+        "id", "title", "message", "content_type", "object_id", "status",
+        "date_created", "last_updated"
     ]
     list_filter = [
         "date_created", "last_updated", "content_type"
@@ -19,6 +20,6 @@ class NotificationAdmin(admin.ModelAdmin):
         "date_created", "last_updated", "content_type", "object_id", "title", "message"
     ]
     fields = [
-        "title", "message", "content_type", "object_id", "date_created",
+        "title", "message", "content_type", "object_id", "status", "date_created",
         "last_updated", "meta"
     ]

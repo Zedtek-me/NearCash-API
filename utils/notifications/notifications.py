@@ -11,6 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from typing import Union, Any, Optional
 
 from apps.notification.models import Notification
+from apps.notification.schema.types.enums import NotificationEnum
 from apps.auths.models import User
 from apps.core.models import Business
 from apps.wallet.models import Transaction
@@ -19,6 +20,7 @@ from apps.wallet.constants import (
 )
 
 from utils.helpers.logs import logger
+from utils.helpers.exception import CustomException
 
 
 class NotificationUtil:
@@ -244,3 +246,31 @@ class NotificationUtil:
             logger.exception(f"exception when publishing socket notification>>>> {e}")
             return False
         return True
+
+
+    @classmethod
+    def update_notification(
+        cls, user: User, data: dict
+    ) -> Optional[Notification]:
+        """updates notification status"""
+        notification_id = data.get("notification_id")
+        status: NotificationEnum = data.get("status")
+        notif_to_update: Optional[Notification] = cls.fetch_notifications(
+            search=Q(id=notification_id)
+        ).first()
+        if not notif_to_update:
+            raise CustomException(
+                f"invalid notification id provided: {notification_id}"
+            )
+        logger.debug(f"status gotten from frontend::: {status}")
+        acceptable_statues = [
+            NotificationEnum.READ.value,
+            NotificationEnum.UNREAD.value
+        ]
+        if status.value not in acceptable_statues:
+            raise CustomException(
+                f"invalid status value provided: {status}"
+            )
+        notif_to_update.status = status.value
+        notif_to_update.save()
+        return notif_to_update
