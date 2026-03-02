@@ -63,7 +63,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
         )(
             self.user, _all=True, skip_error=True
         )
-        await self.send_json(f"welcome {self.user.email}!")
+        # await self.send_json(f"welcome {self.user.email}!")
 
     async def disconnect(self, close_code):
         """Handle WebSocket disconnections."""

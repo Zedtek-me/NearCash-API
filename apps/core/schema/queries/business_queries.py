@@ -96,7 +96,7 @@ class Query(graphene.ObjectType):
     )
 
     vendors = graphene.List(
-        UserType,
+        BusinessType,
         vendor_id=graphene.String(),
         business_id=graphene.String(),
         search=graphene.String(),
@@ -265,11 +265,16 @@ class Query(graphene.ObjectType):
     def resolve_vendors(
         self, info, **kwargs
     ):
+        """
+        @param vendor_id: the id of the vendor user
+        @param business_id: the id of the business
+        @param search: search term to filter vendors by business name or description
+        """
         user = info.context.user
         page_count = kwargs.pop("page_count", 10)
         page_number = kwargs.pop("page_number", 1)
-        vendor_users = BusinessUtil.get_vendor_users(user, kwargs)
+        vendor_businesses = BusinessUtil.get_vendor_businesses(user, kwargs)
 
-        paginated = PaginationUtil.paginate(vendor_users, page_number, page_count)
+        paginated = PaginationUtil.paginate(vendor_businesses, page_number, page_count)
         info.context.pagination = paginated
         return paginated.pop("items", [])

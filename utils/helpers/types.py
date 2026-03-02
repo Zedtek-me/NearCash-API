@@ -9,3 +9,5 @@ class PaginationType(graphene.ObjectType):
     current_page = graphene.Int()
     next_page = graphene.Int()
     previous_page = graphene.Int()
+    total_unread_items = graphene.Int()
+    total_read_items = graphene.Int()

@@ -479,6 +479,35 @@ class BusinessUtil:
         vendors_users = User.objects.filter(search_filter, id__in=trxn_vendor_ids)
         return vendors_users
 
+    @classmethod
+    def get_vendor_businesses(
+        cls, user, data: dict, search: Q = Q()
+    ) -> QuerySet:
+        """
+        returns the businesses of the vendors that the given user has patronized as a client
+        """
+        from apps.auths.models import User
+
+        is_client = user.meta.get("user_type", "") == "CLIENT"
+        business_id = data.get("business_id")
+        vendor_id = data.get("vendor_id")
+        search = data.get("search")
+
+        search_filter = Q()
+
+        if not is_client:
+            raise CustomException("Only client can fetch all vendor's they've patronized!")
+        trxns = user.client_transactions.all()
+        if business_id:
+            trxns = trxns.filter(business_id=business_id)
+        trxn_business_ids = trxns.values_list("business_id", flat=True)
+        if search:
+            search_filter = Q(name__icontains=search) | Q(address__icontains=search)
+        if vendor_id:
+            search_filter &= Q(owner__id=vendor_id)
+        vendor_businesses = Business.objects.filter(search_filter, id__in=trxn_business_ids)
+        return vendor_businesses
+
 
     @classmethod
     def check_and_activate_vendor_businesses(

@@ -269,7 +269,6 @@ class NotificationUtil:
             raise CustomException(
                 f"invalid notification id provided: {notification_id}"
             )
-        logger.debug(f"status gotten from frontend::: {status}")
         acceptable_statues = [
             NotificationEnum.READ.value,
             NotificationEnum.UNREAD.value
