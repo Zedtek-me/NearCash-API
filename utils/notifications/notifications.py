@@ -5,7 +5,7 @@ from channels.layers import get_channel_layer
 
 from django.conf import settings
 from django.db.models import Model
-from django.db.models import QuerySet, Q
+from django.db.models import QuerySet, Q, Case, When, IntegerField, Value
 from django.contrib.contenttypes.models import ContentType
 
 from typing import Union, Any, Optional
@@ -150,6 +150,13 @@ class NotificationUtil:
         business = None
         search = search or Q()
         notifications = Notification.objects.filter(search).order_by("-date_created")
+        notifications = notifications.annotate(
+            is_read=Case(
+                When(status=NotificationEnum.READ.value, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField()
+            )
+        ).order_by("is_read", "-date_created")
 
         if user_id:
             user = User.objects.filter(id=user_id).first()

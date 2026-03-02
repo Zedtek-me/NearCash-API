@@ -392,8 +392,8 @@ class BusinessUtil:
 
         business = cls.get_business({"id": business_id})
         trxn: Union[Transaction, None] = TransactionUtil.get_transaction(**{"id": trxn_id})
-        if not business_id or not business and trxn:
-            business = trxn.business
+        if (not business_id or not business) and trxn:
+            business = trxn and trxn.business
         if not location or not business:
             raise CustomException("Invalid data provided for recording location")
         vendor_id = vendor_id or (business and business.owner.id)
