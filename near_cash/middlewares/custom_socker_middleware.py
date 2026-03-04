@@ -42,9 +42,9 @@ class CustomSocketAuthMiddleware:
         formats header as dict
         """
         formatted_headers = {}
-        def format_bytes(byte_data: Tuple[bytes])->dict:
+        def format_bytes(byte_data: Tuple[bytes, bytes])->dict:
             byte_key, byte_value = byte_data
-            if not (byte_key and byte_data):
+            if not (byte_key and byte_value):
                 return formatted_headers
             return {
                 byte_key.decode(): byte_value.decode()

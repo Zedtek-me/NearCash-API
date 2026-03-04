@@ -27,6 +27,5 @@ jobs:
           script: |
             cd NearCashBackend
             git pull origin develop --rebase
-            echo "Tearing down existing containers and starting new ones..."
-            docker compose -f nearcash-compose.yml down
+            echo "Building and re-starting containers again..."
             docker compose -f nearcash-compose.yml up --build -d api redis rabbitmq database celery_worker
