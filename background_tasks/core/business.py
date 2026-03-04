@@ -152,6 +152,7 @@ class BusinessAsyncOperations:
             )
 
         txn_info = {
+                    "txn_id": txn.id,
                     "txn_ref": txn.txn_ref,
                     "client_id": txn.client.id,
                     "amount": txn.amount,
@@ -165,6 +166,7 @@ class BusinessAsyncOperations:
 
         if not for_vendor:
             txn_info = {
+                        "txn_id": txn.id,
                         "txn_ref": txn.txn_ref,
                         "status": txn.status,
                         "amount": txn.amount,
