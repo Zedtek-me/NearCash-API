@@ -93,42 +93,9 @@ class BusinessAsyncOperations:
         from apps.notification.email.app_emails import EmailService
 
         txn = TransactionUtil.get_transaction(**{"id": txn_id})
-        channel_layer = get_channel_layer()
         txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
             txn, for_vendor=False
         )
-
-        # capture notification in db
-        txn_status = txn.status.title()
-        txn_status = "Approved" if txn_status == "In_Progress" else txn_status
-        business = txn.business
-        title = (
-            f"Transaction { txn_status }!"
-            if txn_status in [ "Approved", "Declined" ]
-            else "Transaction Status Update"
-        )
-        NotificationUtil.record_notification(
-            title=title,
-            body=(
-                f"{business.name} has {txn_status} your transaction of amount "
-                f"{txn.amount}{txn.currency}."
-            ),
-            extra_data=txn_info,
-            entity=txn.client #entity here is the client
-        )
-
-        async_to_sync(
-            channel_layer.group_send
-        )(
-                txn.client.user_queue,
-                {
-                    "type": "send.notification",
-                    "message": {
-                        "message_type": f"Vendor {txn_status} Transaction Request",
-                        "txn_info": txn_info
-                    }
-                }
-            )
 
         email_data: EmailArgsDto = {
             "subject": "Transaction is being processed!",
