@@ -25,7 +25,6 @@ class Query(graphene.ObjectType):
 
     @login_required
     def resolve_notifications(self, info, **kwargs):
-        logger.debug(f"kwargs::: {kwargs}")
         user_id = kwargs.pop("user_id", None)
         business_id = kwargs.pop("business_id", None)
         _id = kwargs.get("id")

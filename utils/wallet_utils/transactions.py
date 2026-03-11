@@ -70,7 +70,7 @@ class TransactionUtil:
         # if client is the one who cancelled, notify vendor
         if status == CANCELLED and user.id == txn.client.id:
             NotificationUtil.send_socket_notification(txn)
-            BusinessAsyncOperations.notify_vendor_about_transaction.delay(txn_id=txn.id)
+            BusinessAsyncOperations.other_vendor_transaction_notif.delay(txn_id=txn.id)
             return
 
         NotificationUtil.send_socket_notification(txn, for_vendor_notif=False)

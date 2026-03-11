@@ -1,10 +1,6 @@
 from celery import shared_task, Task
-from typing import Union
 
-from typing import Type, Optional
-from django.utils import timezone
-
-from typing import Type
+from typing import Type, Union, Optional
 from django.utils import timezone
 
 from channels.layers import get_channel_layer
@@ -18,7 +14,7 @@ from dtos.generics import EmailArgsDto
 class BusinessAsyncOperations:
 
     @shared_task(bind=True, name="notify_vendor_about_transaction")
-    def notify_vendor_about_transaction(
+    def other_vendor_transaction_notif(
         self, txn_id: str | int, **kwargs
     ) -> bool:
         """
@@ -47,13 +43,21 @@ class BusinessAsyncOperations:
         if not vendor:
             return False
 
-        txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(txn)
-        email_data: EmailArgsDto = {
-            "subject": "New Transaction Interest",
-            "body": "new_txn_interest.html",
-            "recipients": [vendor.email],
-            "context": txn_info
-        }
+
+        # schedule a job that fires after 1 minute or so to check vendor's responsiveness
+        # and notifies client if necessary
+        # schedule_time = txn.date_created + timezone.timedelta(minutes=2)
+        # BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
+        #     eta=schedule_time,
+        #     kwargs={"trxn_id": txn.id}
+        # )
+        # txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(txn)
+        # email_data: EmailArgsDto = {
+        #     "subject": "New Transaction Interest",
+        #     "body": "new_txn_interest.html",
+        #     "recipients": [vendor.email],
+        #     "context": txn_info
+        # }
 
         # send email notification
         # TODO: update the email data context with a reverse geocoded address for the client current location
@@ -104,6 +108,7 @@ class BusinessAsyncOperations:
             "context": txn_info
         }
         # EmailService().send_email(**email_data, raw=False)
+        return True
 
 
     @classmethod
@@ -144,3 +149,74 @@ class BusinessAsyncOperations:
                         "client_current_location": txn.meta.get("client_current_location", {})
                     }
         return txn_info
+
+
+    @shared_task(
+        bind=True, name="expire-trxn-after-delay"
+    )
+    def check_vendor_transaction_responsiveness(
+        self, trxn_id: str | int
+    ):
+        """
+        notifies the client that the vendor is not available
+        and whether to allow system look for another vendor
+        to fulfill the transaction or not.
+        This job mostly runs after it has been pre-schuled for about 1 minute
+        from when a client user initiates a transaction.
+        So it checks if the vendor has not taken any action on the trxn yet,
+        in the space of that one minute.
+        """
+        from utils.wallet_utils.transactions import TransactionUtil
+        from apps.wallet.models import INITIATED
+        from apps.auths.models import User
+
+        trxn = TransactionUtil.get_transaction(**{"id": trxn_id})
+        if not trxn:
+            logger.error(f"no transaction with id {trxn_id}")
+            return
+        status = trxn.status
+        client: User = trxn.client
+        channel_layer = get_channel_layer()
+        trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn, for_vendor=False)
+        client_message = {
+            "type": "send.notification",
+            "message": {
+                "message_type": "Vendor Response Delayed",
+                "txn_info": trxn_info
+            }
+        }
+
+        if status == INITIATED:
+            #prompt client to ether wait or let system recommend.
+            user_channel = client.user_queue
+            async_to_sync(channel_layer.group_send)(
+                user_channel,
+                message=client_message
+            )
+
+
+    @shared_task(
+        bind=True, name="notify-other-vendors-of-transaction-op"
+    )
+    def notify_vendors_about_trxn_opportunity(
+        self, trxn_id: str | int,
+    ):
+        from utils.wallet_utils.transactions import TransactionUtil
+        from utils.core_utils.business_utils import BusinessUtil
+
+        trxn = TransactionUtil.get_transaction(id=trxn_id)
+
+        trxn_meta: dict = trxn.meta
+        trxn_initiation_point = trxn_meta.get("client_current_location") or {}
+        latitude: float | None = trxn_initiation_point.get("latitude")
+        longitude: float | None = trxn_initiation_point.get("longitude")
+
+        if not (latitude and longitude):
+            # fetch client current location from the db
+            pass
+
+        nearby_vendors = BusinessUtil.get_nearby_businesses(
+            current_lat=latitude, current_long=longitude
+        ).exclude(id=trxn.business)
+        # TODO: find a vendor with the transactiona amount and notify accordingly
+        channel_layer = get_channel_layer()

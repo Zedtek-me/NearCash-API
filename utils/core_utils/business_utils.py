@@ -18,11 +18,12 @@ from apps.core.models import (
 )
 
 from apps.core.services import ClientService
+from apps.core.schema.types.client_types import DelayedTransactionResponseInputType
 from apps.auths.models import User
 
 from apps.core.constants import LOCATION_SERVICES
 from apps.wallet.models import Transaction
-from apps.wallet.constants import FULFILLED
+from apps.wallet.constants import FULFILLED, CANCELLED
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
@@ -30,9 +31,11 @@ from utils.helpers.exception import CustomException
 from utils.core_utils.location_utils import GeolocationUtils
 from utils.core_utils.core_utils import CoreUtil
 from utils.wallet_utils.transactions import TransactionUtil
+from utils.notifications.notifications import NotificationUtil
 from utils.helpers.kwargs import KwargUtil
 
 from dtos.core_dtos.business_dtos import UpdateBusinessDto
+from background_tasks.core.business import BusinessAsyncOperations
 
 class BusinessUtil:
 
@@ -71,7 +74,7 @@ class BusinessUtil:
     @classmethod
     def get_nearby_businesses(
         cls, current_lat: float, current_long: float, radius: int = 15000
-    ) -> List[Business]:
+    ) -> QuerySet:
         """returns all the businesses that are within a radius of the current location"""
         point = Point(current_long, current_lat, srid=4326)
         businesses = Business.objects.annotate(
@@ -575,5 +578,62 @@ class BusinessUtil:
                 raise CustomException("Business with the provided id does not exist!")
         else:
             businesses = cls.get_businesses(user, {"owner": user})
-        logger.debug(f"businesses to update to offline:::::::::::::: {businesses}")
         businesses.update(is_online=False)
+
+
+    @classmethod
+    def handle_delayed_trxn_response(
+        cls, client: User, response_data: dict | DelayedTransactionResponseInputType
+    ) -> bool:
+        """
+        handle the response of a client user
+        regarding his delayed transaction response
+        """
+        acceptable_decisions = [
+            "wait_on_vendor",
+            "system_search",
+            "cancel"
+        ]
+        trxn_id = response_data.get("txn_id")
+        decision = response_data.get("decision")
+        decision = decision.value
+        logger.debug(f"decision::::: {decision}")
+        if decision not in acceptable_decisions:
+            raise CustomException(
+                message=f"invalid decision!"
+            )
+        trxn = TransactionUtil.get_transaction(id=trxn_id)
+        if not trxn:
+            raise CustomException(
+                message=f"invalid transaction id: {trxn_id}"
+            )
+
+        match decision:
+            case "system_search":
+                # handle system auto-search
+                # for other nearer vendors who can deliver the given cash
+                cls.validate_and_broadcast_request_to_vendors(trxn)
+
+            case "wait_on_vendor":
+                # prompt the vendor again for this transaction
+                NotificationUtil.send_socket_notification(trxn, skip_record=True)
+                BusinessAsyncOperations.other_vendor_transaction_notif.delay(txn_id=trxn.id)
+
+            case "cancel":
+                TransactionUtil.update_txn_status(client, {"status": CANCELLED})
+            case _:
+                return True
+        return True
+
+
+    @classmethod
+    def validate_and_broadcast_request_to_vendors(
+        cls, trxn: Transaction
+    ):
+        """
+        checks that all or any vendor in the list has the requested amount;
+        then send a notification to the vendor(s) about the trxn.
+        """
+        BusinessAsyncOperations.notify_vendors_about_trxn_opportunity.delay(
+            trxn_id=trxn.id
+        )

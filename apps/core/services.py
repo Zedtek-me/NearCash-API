@@ -4,6 +4,7 @@ from googlemaps import Client as GoogleMapClient
 
 
 from django.conf import settings
+from django.utils import timezone
 
 from interfaces.general.location import LocationInterface
 from utils.helpers.logs import logger
@@ -186,7 +187,12 @@ class ClientService:
         txn = TransactionUtil.create_transaction(**txn_data)
         # send websocket notification to vendor before other async operations
         NotificationUtil.send_socket_notification(txn)
-        BusinessAsyncOperations.notify_vendor_about_transaction.delay(txn_id=txn.id)
+        BusinessAsyncOperations.other_vendor_transaction_notif.delay(txn_id=txn.id)
+        schedule_time = txn.date_created + timezone.timedelta(minutes=1)
+        BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
+            eta=schedule_time,
+            kwargs={"trxn_id": txn.id}
+        )
         return txn
 
     @classmethod
@@ -197,6 +203,12 @@ class ClientService:
         validates that the amount to withdraw is
         within the range of the financial asset.
         """
+        if "+" in asset.range:
+            _range = asset.range
+            amount = float(str(_range).replace("+", ""))
+            if amount_to_withdraw < amount:
+                return False
+            return True
         min_amount, max_amount = asset.range.split("-")
         min_amount, max_amount = float(min_amount), float(max_amount)
         if not (min_amount <= amount_to_withdraw <= max_amount):

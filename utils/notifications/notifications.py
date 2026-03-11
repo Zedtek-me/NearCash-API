@@ -181,7 +181,8 @@ class NotificationUtil:
 
     @classmethod
     def send_socket_notification(
-        cls, txn: Transaction, for_vendor_notif = True
+        cls, txn: Transaction, for_vendor_notif = True,
+        skip_record: bool = False
     ) -> bool:
         from background_tasks.core.business import BusinessAsyncOperations
 
@@ -224,13 +225,14 @@ class NotificationUtil:
                     f"{txn.amount}{txn.currency}."
                 )
             # asynchronously persists notif log in the db
-            cls.create_notification_async.delay(
-                title=title,
-                body=body,
-                user_id=user_id,
-                business_id=business_id,
-                txn_info=txn_info
-            )
+            if not skip_record:
+                cls.create_notification_async.delay(
+                    title=title,
+                    body=body,
+                    user_id=user_id,
+                    business_id=business_id,
+                    txn_info=txn_info
+                )
             socket_notification_data = {
                 "type": "send.notification",
                 "message": {

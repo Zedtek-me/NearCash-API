@@ -6,6 +6,10 @@ from django.db.transaction import atomic
 
 from apps.wallet.schema.types.wallet import TransactionType
 from apps.wallet.schema.types.wallet import InitiateTransactionInputType
+from apps.core.schema.types.client_types import (
+    DelayedTransactionResponseInputType,
+    DelayedTransactionResponseEnum
+)
 
 from utils.core_utils.business_utils import BusinessUtil
 
@@ -35,7 +39,29 @@ class InitiateTransaction(graphene.Mutation):
             transaction=txn
         )
 
+
+class RespondToDelayedTransaction(graphene.Mutation):
+    message = graphene.String()
+
+    class Arguments:
+        txn_id = graphene.String(required=True)
+        decision = DelayedTransactionResponseEnum()
+
+    @login_required
+    def mutate(self, info, **data):
+        user = info.context.user
+        BusinessUtil.handle_delayed_trxn_response(
+            user, data
+        )
+        return RespondToDelayedTransaction(
+            message="Response acknowledged!"
+        )
+
+
 class Mutation(graphene.ObjectType):
     initiate_transaction = InitiateTransaction.Field(
         description="Initiates a transaction for a client."
+    )
+    respond_to_delayed_transaction = RespondToDelayedTransaction.Field(
+        description="Let's a client user take action about his trxn being delayed"
     )
