@@ -668,6 +668,7 @@ class BusinessUtil:
             business=business, transaction=trxn
         )
 
+
     @classmethod
     def accept_transaction_opportunity(
         cls, **data: dict

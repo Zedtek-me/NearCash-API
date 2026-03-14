@@ -263,7 +263,7 @@ class BusinessAsyncOperations:
                 owner: User = business.owner
                 body = body.format(
                     business.distance.km,
-                    "meters" if business.distance.km < 1 else "km",
+                    "m" if business.distance.km < 1 else "km",
                     trxn_amount
                 )
 
@@ -288,7 +288,7 @@ class BusinessAsyncOperations:
                 )
         trxn.meta["re_routed"] = True
         trxn.save()
-        # notifies client later if no vendor takes action about the trxn in next 30 seconds 
+        # notifies client later if no vendor takes action about the trxn in next 30 seconds
         BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
             eta=(
                 trxn.last_updated + timezone.timedelta(seconds=30)
