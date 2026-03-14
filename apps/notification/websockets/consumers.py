@@ -143,8 +143,12 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                     }
                 )
             case "opportunity_accepted":
+                if handled_response and handled_response is True:
+                    message_type = "acceptance_ack"
+                else:
+                    message_type = "opportunity_lost"
                 response.update({
-                    "message_type": "acceptance_ack"
+                    "message_type": message_type
                 })
                 await self.send_json(response)
 
