@@ -231,3 +231,4 @@ EMAIL_PORT = config("EMAIL_PORT", cast=int, default=1025)
 EMAIL_USE_TLS = (ENVIRONMENT in ['production', 'staging'])
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", cast=str, default="support@nearcash.com")
 GENERAL_NOTIFICATION_GROUP_NAME = "nearcash_notifications"
+OPPORTUNISTIC_VENDOR_GROUP = "transaction_opportunity"

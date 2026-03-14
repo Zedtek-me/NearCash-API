@@ -37,6 +37,10 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
             "retrieve_client_latest_location": {
                 "handler": sync_to_async(BusinessUtil.get_client_latest_location),
                 "response": {}
+            },
+            "opportunity_accepted": {
+                "handler": sync_to_async(BusinessUtil.accept_transaction_opportunity),
+                "response": {}
             }
         }
 
@@ -81,7 +85,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
             )
         await super().disconnect(close_code)
 
-    async def receive_json(self, content: Union[dict, str], *args, **kwargs):
+    async def receive_json(self, content: dict, *args, **kwargs):
         """Handle incoming messages."""
 
         logger.debug(f"content gotten on websocket msg receiver::::::::: {content}")
@@ -91,8 +95,11 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
         try:
             vendor_id = content.get("vendor_id")
             client_id = content.get("client_id")
-            handled_response = await self.MESSAGE_TYPE_HANDLERS.get(msg_type, {})\
-                .get("handler")(**content)
+            handler = self.MESSAGE_TYPE_HANDLERS.get(msg_type, {})\
+                .get("handler")
+            handled_response = None
+            if handler:
+                handled_response = await handler(**content)
             response: dict = self.MESSAGE_TYPE_HANDLERS.get(msg_type, {}).get("response", {})
         except Exception as e:
             logger.exception(f"Error recording vendor location: {e}")
@@ -135,6 +142,12 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                         "message": response
                     }
                 )
+            case "opportunity_accepted":
+                response.update({
+                    "message_type": "acceptance_ack"
+                })
+                await self.send_json(response)
+
             case _:
                 await self.send_json({
                     "message_type": "error",

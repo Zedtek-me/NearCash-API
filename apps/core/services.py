@@ -188,7 +188,7 @@ class ClientService:
         # send websocket notification to vendor before other async operations
         NotificationUtil.send_socket_notification(txn)
         BusinessAsyncOperations.other_vendor_transaction_notif.delay(txn_id=txn.id)
-        schedule_time = txn.date_created + timezone.timedelta(minutes=1)
+        schedule_time = txn.date_created + timezone.timedelta(seconds=30)
         BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
             eta=schedule_time,
             kwargs={"trxn_id": txn.id}

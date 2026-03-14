@@ -105,3 +105,36 @@ class Wallet(BaseModel):
         db_table = 'wallet'
         verbose_name = "wallet"
         verbose_name_plural = "wallets"
+
+
+
+
+class TransactionOpportunity(BaseModel):
+    """
+    captures transaction opportunities for vendors
+    """
+    business = models.ForeignKey(
+        to="core.Business", on_delete=models.CASCADE, null=True,
+        help_text="the vendor business to which this opportunity was shared"
+    )
+    transaction = models.ForeignKey(
+        to="wallet.Transaction", on_delete=models.CASCADE, null=True,
+        help_text="the transaction whose opportunity was shared to the given vendor"
+    )
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Business Transaction opportunity <<Active: {self.is_active}>>"
+
+    class Meta(BaseModel.Meta):
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "transaction", "business"
+                ],
+                name="one_opp_per_business"
+            )
+        ]
+        verbose_name = "Transaction Opportunity"
+        verbose_name_plural = "Transaction Opportunities"
+        db_table = "transaction_opportunity"

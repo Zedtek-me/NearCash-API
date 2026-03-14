@@ -194,7 +194,9 @@ class NotificationUtil:
             ]:
                 return False
 
-            txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(txn)
+            txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
+                txn, for_vendor=for_vendor_notif
+            )
             txn_status = txn.status.title()
             txn_status = "Approved" if txn_status == "In_Progress" else txn_status
             vendor: User = txn.vendor

@@ -32,6 +32,12 @@ class Business(BaseModel):
     )
     is_primary = models.BooleanField(default=False)
     is_online = models.BooleanField(default=True)
+    available_liquidity = models.FloatField(
+        null=True, help_text=(
+            "POS Vendors are to set their available liquidity for the day\n"
+            "giving room for vendor ranking based on liquidity availabilty too."
+        )
+    )
 
     class Meta(BaseModel.Meta):
         db_table = 'business'
@@ -57,6 +63,10 @@ class BusinessTransactionPolicy(BaseModel):
         default=STORE_WALK_IN
     )
     meet_up_charge = models.FloatField(default=0.0, null=True)
+    max_delivery_amount = models.FloatField(null=True)
+    max_delivery_distance = models.FloatField(
+        null=True, help_text="maximum distance a vendor can delivery cash -- in km"
+    )
 
     class Meta(BaseModel.Meta):
         db_table = "business_transaction_policy"
