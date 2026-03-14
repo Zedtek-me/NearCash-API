@@ -31,7 +31,7 @@ class FinancialAssetAdmin(admin.ModelAdmin):
 @admin.register(TransactionOpportunity)
 class TransactionOpportunityAdmin(admin.ModelAdmin):
     list_display = [
-        "id", "business", "transaction",
+        "id", "business", "transaction", "is_active",
         "date_created", "last_updated"
     ]
     list_filter = ["business", "date_created", "last_updated"]

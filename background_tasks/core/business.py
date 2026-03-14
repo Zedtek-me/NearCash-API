@@ -36,22 +36,17 @@ class BusinessAsyncOperations:
             logger.error(f"Transaction with id {txn_id} not found.")
             return False
 
-        txn_client: User = txn.client
+        txn_client: User | None = txn.client
         BusinessAsyncOperations.update_client_last_patronized(
             txn_client, txn
         )
         vendor: User | None = txn.vendor
         if not vendor:
             return False
-
-
-        # schedule a job that fires after 1 minute or so to check vendor's responsiveness
-        # and notifies client if necessary
-        # schedule_time = txn.date_created + timezone.timedelta(minutes=2)
-        # BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
-        #     eta=schedule_time,
-        #     kwargs={"trxn_id": txn.id}
-        # )
+        # lock the amount to withdraw away from the total available liquidity until
+        BusinessAsyncOperations.lock_transaction_amount_from_vendor_liquidity(
+            txn.business, txn
+        )
         # txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(txn)
         # email_data: EmailArgsDto = {
         #     "subject": "New Transaction Interest",
@@ -67,7 +62,24 @@ class BusinessAsyncOperations:
         # )
 
         # send sms notification
-        return
+        return True
+
+
+    @classmethod
+    def lock_transaction_amount_from_vendor_liquidity(
+        cls, business, trxn
+    ):
+        """
+        locks trxn amount away from total liquidity
+        """
+        business_current_total_liquidity = business.available_liquidity or 0.0
+        if not business_current_total_liquidity or business_current_total_liquidity < 1:
+            logger.warning(f"business is out of liquidity for the day!")
+            return trxn
+        business_current_total_liquidity -= float(trxn.amount)
+        business.available_liquidity = business_current_total_liquidity
+        business.save()
+        return trxn
 
     @classmethod
     def update_client_last_patronized(

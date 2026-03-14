@@ -9,7 +9,7 @@ from .models import (
 class BusinessAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'name', 'owner', 'date_created', 'last_updated', 'country', 'currency', 'status',
-        'parent_business_id', "is_primary", "is_online"
+        'parent_business_id', "available_liquidity", "is_primary", "is_online",
     )
     search_fields = (
         'name__icontains', 'owner__email__iexact', 'owner__username__icontains',
@@ -37,10 +37,15 @@ class BusinessClientCategoryAdmin(admin.ModelAdmin):
 @admin.register(BusinessTransactionPolicy)
 class BusinessTransactionPolicy(admin.ModelAdmin):
     list_display = [
-        "id", "name", "description", "cash_collection_mode", "meet_up_charge", "business"
+        "id", "name", "description", "cash_collection_mode", "meet_up_charge", "business",
+        "max_delivery_distance", "max_delivery_amount"
     ]
     search_fields = [
         "name__icontains", "cash_collection_mode__icontains", "meet_up_charge"
+    ]
+    fields = [
+        "name", "description", "cash_collection_mode", "meet_up_charge", "business",
+        "max_delivery_distance", "max_delivery_amount", "meta",
     ]
 
 
