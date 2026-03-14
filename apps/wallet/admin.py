@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Wallet, Transaction, FinancialAsset
+from .models import Wallet, Transaction, FinancialAsset, TransactionOpportunity
 
 @admin.register(Wallet)
 class WalletAdmin(admin.ModelAdmin):
@@ -26,3 +26,17 @@ class FinancialAssetAdmin(admin.ModelAdmin):
     list_display = ('id', 'range', 'charge_rate', 'business', 'date_created', 'last_updated')
     search_fields = ('range', 'business__name', 'business__owner__email')
     list_filter = ('date_created', 'last_updated', 'range', 'business')
+
+
+@admin.register(TransactionOpportunity)
+class TransactionOpportunityAdmin(admin.ModelAdmin):
+    list_display = [
+        "id", "business", "transaction", "is_active",
+        "date_created", "last_updated"
+    ]
+    list_filter = ["business", "date_created", "last_updated"]
+    search = [
+        "business__name__icontains", "business__owner__email__icontains",
+        "business__owner__first_name__icontains", "business__owner__last_name__icontains",
+        "transaction__amount", "transaction__txn_ref",
+    ]

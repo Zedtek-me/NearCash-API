@@ -188,15 +188,29 @@ class ClientService:
         # send websocket notification to vendor before other async operations
         NotificationUtil.send_socket_notification(txn)
         BusinessAsyncOperations.other_vendor_transaction_notif.delay(txn_id=txn.id)
-        schedule_time = txn.date_created + timezone.timedelta(minutes=1)
+        schedule_time = txn.date_created + timezone.timedelta(seconds=30)
         BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
             eta=schedule_time,
             kwargs={"trxn_id": txn.id}
         )
         return txn
 
+
     @classmethod
-    def _validate_withdrawal_amount(
+    def _validate_withdrawal_amount_against_vendor_liquidity(
+        cls, amount_to_withdraw: float, business
+    ) -> bool:
+        """
+        checks if vendor has the amount demanded in the first place
+        """
+        business_current_liquidity = business.available_liquidity
+        if float(amount_to_withdraw) > float(business_current_liquidity):
+            return False
+        return True
+
+
+    @classmethod
+    def _validate_withdrawal_amount_against_asset_range(
         cls, asset, amount_to_withdraw: float
     ) -> bool:
         """
@@ -259,10 +273,24 @@ class ClientService:
         txn_policy = BusinessUtil.fetch_business_txn_policy_for_current_client(
             client, asset.business.id
         )
-        amount_to_withdraw = data.get("amount_to_withdraw")
+        amount_to_withdraw: float = data.get("amount_to_withdraw") or 0.0
         cash_collection_mode = data.get("collection_mode").value
         extra_charge = 0.0
-        if not cls._validate_withdrawal_amount(asset, amount_to_withdraw):
+        if not amount_to_withdraw or float(amount_to_withdraw) <= 0:
+            raise CustomException(
+                message=f"please specify an amount greater than {amount_to_withdraw}"
+            )
+        if not cls._validate_withdrawal_amount_against_vendor_liquidity(
+                amount_to_withdraw, asset.business
+            ):
+            raise CustomException(
+                message=(
+                    f"amount to withdraw: {amount_to_withdraw} currently exceeds vendor's available liquidity: "
+                    f"{asset.business.available_liquidity}\n"
+                    "Try Checking another vendor that has up to the amount you need!"
+                )
+            )
+        if not cls._validate_withdrawal_amount_against_asset_range(asset, amount_to_withdraw):
             raise CustomException(
                 message=f"Amount to withdraw {amount_to_withdraw} is not within the range of the selected asset: {asset.range}."
             )

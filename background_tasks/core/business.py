@@ -1,7 +1,8 @@
 from celery import shared_task, Task
 
-from typing import Type, Union, Optional
+from typing import Type, Union, Optional, List, Dict, Any
 from django.utils import timezone
+from django.conf import settings
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -35,22 +36,17 @@ class BusinessAsyncOperations:
             logger.error(f"Transaction with id {txn_id} not found.")
             return False
 
-        txn_client: User = txn.client
+        txn_client: User | None = txn.client
         BusinessAsyncOperations.update_client_last_patronized(
             txn_client, txn
         )
         vendor: User | None = txn.vendor
         if not vendor:
             return False
-
-
-        # schedule a job that fires after 1 minute or so to check vendor's responsiveness
-        # and notifies client if necessary
-        # schedule_time = txn.date_created + timezone.timedelta(minutes=2)
-        # BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
-        #     eta=schedule_time,
-        #     kwargs={"trxn_id": txn.id}
-        # )
+        # lock the amount to withdraw away from the total available liquidity until
+        BusinessAsyncOperations.lock_transaction_amount_from_vendor_liquidity(
+            txn.business, txn
+        )
         # txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(txn)
         # email_data: EmailArgsDto = {
         #     "subject": "New Transaction Interest",
@@ -66,7 +62,24 @@ class BusinessAsyncOperations:
         # )
 
         # send sms notification
-        return
+        return True
+
+
+    @classmethod
+    def lock_transaction_amount_from_vendor_liquidity(
+        cls, business, trxn
+    ):
+        """
+        locks trxn amount away from total liquidity
+        """
+        business_current_total_liquidity = business.available_liquidity or 0.0
+        if not business_current_total_liquidity or business_current_total_liquidity < 1:
+            logger.warning(f"business is out of liquidity for the day!")
+            return trxn
+        business_current_total_liquidity -= float(trxn.amount)
+        business.available_liquidity = business_current_total_liquidity
+        business.save()
+        return trxn
 
     @classmethod
     def update_client_last_patronized(
@@ -114,7 +127,7 @@ class BusinessAsyncOperations:
     @classmethod
     def get_txn_info_for_async_ops(
         cls, txn, skip_error: bool = False, for_vendor: bool = True
-    ) -> Optional[dict]:
+    ) -> Dict[str, int | Any]:
         from apps.auths.models import User
 
         vendor: User | None = txn.vendor
@@ -155,7 +168,7 @@ class BusinessAsyncOperations:
         bind=True, name="expire-trxn-after-delay"
     )
     def check_vendor_transaction_responsiveness(
-        self, trxn_id: str | int
+        self, trxn_id: str | int, custom_message_type: str = "Vendor Response Delayed"
     ):
         """
         notifies the client that the vendor is not available
@@ -181,7 +194,7 @@ class BusinessAsyncOperations:
         client_message = {
             "type": "send.notification",
             "message": {
-                "message_type": "Vendor Response Delayed",
+                "message_type": custom_message_type,
                 "txn_info": trxn_info
             }
         }
@@ -203,20 +216,108 @@ class BusinessAsyncOperations:
     ):
         from utils.wallet_utils.transactions import TransactionUtil
         from utils.core_utils.business_utils import BusinessUtil
+        from utils.notifications.notifications import NotificationUtil
+        from apps.auths.models import User
 
         trxn = TransactionUtil.get_transaction(id=trxn_id)
+        if not trxn:
+            logger.error(f"can't find trxn with id: {trxn_id} for opportunity broadcast!")
+            return
 
         trxn_meta: dict = trxn.meta
         trxn_initiation_point = trxn_meta.get("client_current_location") or {}
         latitude: float | None = trxn_initiation_point.get("latitude")
         longitude: float | None = trxn_initiation_point.get("longitude")
+        client: User = trxn.client
+        trxn_amount = trxn.amount
 
         if not (latitude and longitude):
-            # fetch client current location from the db
-            pass
+            cur_location = BusinessUtil.fetch_existing_user_location(
+                client, location_type="Client"
+            )
+            latitude = cur_location and cur_location.location.y
+            longitude = cur_location and cur_location.location.x
 
         nearby_vendors = BusinessUtil.get_nearby_businesses(
             current_lat=latitude, current_long=longitude
-        ).exclude(id=trxn.business)
-        # TODO: find a vendor with the transactiona amount and notify accordingly
-        channel_layer = get_channel_layer()
+        ).exclude(id=trxn.business.id).filter(
+            available_liquidity__gte=trxn_amount
+        )
+        trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn)
+
+        if "vendor_name" in trxn_info and "vendor_phone_number" in trxn_info:
+            del trxn_info["vendor_name"]
+            del trxn_info["vendor_phone_number"]
+
+        trxn_opportunity_msg = {
+            "message_type": "Transaction Opportunity!",
+            "txn_info": trxn_info
+        }
+        title = "Transaction Opportunity!"
+        body = (
+           "A client who is less than {} {} away from you needs an amount of {}\n"
+           "Would you be able to fulfil it?"
+        )
+        if nearby_vendors and len(nearby_vendors) > 0:
+            for business in nearby_vendors:
+                owner: User = business.owner
+                body = body.format(
+                    business.distance.km,
+                    "meters" if business.distance.km < 1 else "km",
+                    trxn_amount
+                )
+
+                NotificationUtil.create_notification_async.delay(
+                    title=title,
+                    body=body,
+                    business_id=business.id
+                )
+                # capture opportunity in the db
+                BusinessUtil.register_opportunity_for_business(
+                    trxn, business
+                )
+                channel_layer = get_channel_layer()
+                async_to_sync(
+                    channel_layer.group_send
+                )(
+                    owner.user_queue,
+                    {
+                        "type": "send.notification",
+                        "message": trxn_opportunity_msg
+                    }
+                )
+        trxn.meta["re_routed"] = True
+        trxn.save()
+        # notifies client later if no vendor takes action about the trxn in next 30 seconds 
+        BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
+            eta=(
+                trxn.last_updated + timezone.timedelta(seconds=30)
+            ),
+            kwargs={"trxn_id": trxn_id, "custom_message_type": "No Available Vendors"}
+        )
+
+
+    @shared_task(
+        bind=True, name="post-opportunity-acceptance-task"
+    )
+    def run_post_opportunity_acceptance_task(
+        self, trxn_id: str
+    ):
+        """
+        all things to be done after a vendor accepts a transaction opportunity
+        """
+        from utils.wallet_utils.transactions import TransactionUtil
+        from utils.core_utils.business_utils import BusinessUtil
+        from utils.notifications.notifications import NotificationUtil
+        from apps.wallet.models import TransactionOpportunity
+
+        trxn = TransactionUtil.get_transaction(id=trxn_id)
+
+        # notify client of transaction acceptance
+        NotificationUtil.send_socket_notification(
+                txn=trxn, for_vendor_notif=False
+        )
+        all_opportunities = TransactionOpportunity.objects.filter(
+            transaction=trxn
+        )
+        all_opportunities.update(is_active=False)

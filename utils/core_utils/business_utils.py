@@ -10,6 +10,7 @@ from django.db.models import (
 )
 from django.db.models.functions import Cast
 from django.utils import timezone
+from django.db import transaction
 
 from apps.core.models import (
     Business, BusinessTransactionPolicy,
@@ -22,8 +23,8 @@ from apps.core.schema.types.client_types import DelayedTransactionResponseInputT
 from apps.auths.models import User
 
 from apps.core.constants import LOCATION_SERVICES
-from apps.wallet.models import Transaction
-from apps.wallet.constants import FULFILLED, CANCELLED
+from apps.wallet.models import Transaction, TransactionOpportunity
+from apps.wallet.constants import FULFILLED, CANCELLED, IN_PROGRESS
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
@@ -73,23 +74,39 @@ class BusinessUtil:
 
     @classmethod
     def get_nearby_businesses(
-        cls, current_lat: float, current_long: float, radius: int = 15000
+        cls, current_lat: float, current_long: float, radius: int = 3000
     ) -> QuerySet:
         """returns all the businesses that are within a radius of the current location"""
         point = Point(current_long, current_lat, srid=4326)
-        businesses = Business.objects.annotate(
-            distance=Geodistance("geo_location", point)
-        ).filter(
+        businesses_in_defined_km = Business.objects.none()
+        businesses_away_from_user = Business.objects.annotate(distance=Geodistance("geo_location", point))
+        # resolution 3km, 5km, and or 15km
+        # 3km first
+        businesses_in_defined_km = businesses_away_from_user.filter(
             geo_location__distance_lte=(point, radius)
-        ).order_by("distance", "is_online")
-        nearest_business = businesses.values("distance").first()
-        businesses = businesses.annotate(
+        )
+        # 5km next
+        if not businesses_in_defined_km or businesses_in_defined_km.count() < 3:
+            radius = 5000
+            businesses_in_defined_km = businesses_away_from_user.filter(
+                geo_location__distance_lte=(point, radius)
+            )
+        # 15km last
+        if not businesses_in_defined_km or businesses_in_defined_km.count() < 3:
+            radius = 15000
+            businesses_in_defined_km = businesses_away_from_user.filter(
+                geo_location__distance_lte=(point, radius)
+            )
+        nearest_business = businesses_in_defined_km.values("distance").first() or {}
+        businesses = businesses_in_defined_km.annotate(
                 nearest=Case(
                     When(distance=nearest_business.get("distance"), then=Value(True)),
                     default=False,
                     output_field=BooleanField()
                 )
-        ).order_by("distance")
+        )
+        # order by liquidity availability first, then distance
+        businesses = businesses.order_by("available_liquidity", "distance")
         return businesses
 
     @classmethod
@@ -248,7 +265,7 @@ class BusinessUtil:
         business = None
         if location_type.title() == "Vendor":
             business = cls.get_business({"id": kwargs.get("business_id")})
-        loc = cls._fetch_existing_user_location(
+        loc = cls.fetch_existing_user_location(
             user=user,
             location_type=location_type.title(),
             business=business
@@ -266,7 +283,7 @@ class BusinessUtil:
         return loc
 
     @classmethod
-    def _fetch_existing_user_location(
+    def fetch_existing_user_location(
         cls, user, **kwargs
     ) -> Optional[CurrentLocation]:
         return user.current_locations.filter(**kwargs).first()
@@ -637,3 +654,50 @@ class BusinessUtil:
         BusinessAsyncOperations.notify_vendors_about_trxn_opportunity.delay(
             trxn_id=trxn.id
         )
+
+
+    @classmethod
+    def register_opportunity_for_business(
+        cls, trxn: Transaction, business: Business
+    ) -> TransactionOpportunity:
+        """
+        captures the transaction interest as an opportunity
+        for the given business.
+        """
+        return TransactionOpportunity.objects.create(
+            business=business, transaction=trxn
+        )
+
+    @classmethod
+    def accept_transaction_opportunity(
+        cls, **data: dict
+    ) -> bool:
+        """
+        locks trxn for a vendor who just accepted an opportunity
+        """
+        with transaction.atomic():
+            trxn_id, trxn_ref = data.get("txn_id"), data.get("txn_ref")
+            vendor_business_id = data.get("business_id")
+            vendor_who_accepted_transaction = cls.get_business({"id": vendor_business_id})
+            if not vendor_who_accepted_transaction:
+                raise CustomException(
+                    message=f"couldn't find vendor with id: {vendor_business_id}"
+                )
+            trxn = Transaction.objects.select_for_update().filter(
+                id=trxn_id, txn_ref=trxn_ref
+            ).first()
+            if not trxn:
+                raise CustomException(
+                    f"couldn't find a transaction with id: {trxn_id} and ref: {trxn_ref}!"
+                )
+            trxn.status = IN_PROGRESS
+            trxn.vendor = vendor_who_accepted_transaction.owner
+            trxn.business = vendor_who_accepted_transaction
+            trxn.save()
+
+        transaction.on_commit(
+            lambda: BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay(
+                trxn_id=trxn.id
+            )
+        )
+        return True
