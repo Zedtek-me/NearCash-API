@@ -690,6 +690,8 @@ class BusinessUtil:
                 raise CustomException(
                     f"couldn't find a transaction with id: {trxn_id} and ref: {trxn_ref}!"
                 )
+            if trxn.status == IN_PROGRESS:
+                return False
             trxn.status = IN_PROGRESS
             trxn.vendor = vendor_who_accepted_transaction.owner
             trxn.business = vendor_who_accepted_transaction
