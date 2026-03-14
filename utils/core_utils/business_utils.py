@@ -106,7 +106,7 @@ class BusinessUtil:
                 )
         )
         # order by liquidity availability first, then distance
-        businesses = businesses.order_by("available_liquidity", "distance")
+        businesses = businesses.order_by("-available_liquidity").order_by("distance")
         return businesses
 
     @classmethod
