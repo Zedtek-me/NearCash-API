@@ -86,13 +86,13 @@ class BusinessUtil:
             geo_location__distance_lte=(point, radius)
         )
         # 5km next
-        if not businesses_in_defined_km or not businesses_in_defined_km.count() < 3:
+        if not businesses_in_defined_km or businesses_in_defined_km.count() < 3:
             radius = 5000
             businesses_in_defined_km = businesses_away_from_user.filter(
                 geo_location__distance_lte=(point, radius)
             )
         # 15km last
-        if not businesses_in_defined_km or not businesses_in_defined_km.count() < 3:
+        if not businesses_in_defined_km or businesses_in_defined_km.count() < 3:
             radius = 15000
             businesses_in_defined_km = businesses_away_from_user.filter(
                 geo_location__distance_lte=(point, radius)
@@ -104,7 +104,9 @@ class BusinessUtil:
                     default=False,
                     output_field=BooleanField()
                 )
-        ).order_by("distance")
+        )
+        # order by liquidity availability first, then distance
+        businesses = businesses.order_by("available_liquidity", "distance")
         return businesses
 
     @classmethod
