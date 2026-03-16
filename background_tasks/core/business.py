@@ -143,7 +143,7 @@ class BusinessAsyncOperations:
                     "amount": txn.amount,
                     "client_current_location": txn.meta.get("client_current_location", {}),
                     "mode": txn.collection_mode,
-                    "vendor_name": vendor.full_name,
+                    "vendor_name": txn.business.name,
                     "client_name": txn.client.full_name,
                     "client_phone_number": txn.client.phone_number,
                     "vendor_phone_number": vendor.phone_number
@@ -155,7 +155,7 @@ class BusinessAsyncOperations:
                         "txn_ref": txn.txn_ref,
                         "status": txn.status,
                         "amount": txn.amount,
-                        "vendor_name": (txn.vendor and txn.vendor.full_name) or "",
+                        "vendor_name": (txn.business and txn.business.name) or "",
                         "client_name": txn.client.full_name,
                         "client_phone_number": txn.client.phone_number,
                         "vendor_phone_number": txn.vendor.phone_number if txn.vendor else "",
