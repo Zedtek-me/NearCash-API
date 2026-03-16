@@ -259,23 +259,39 @@ class BusinessAsyncOperations:
            "Would you be able to fulfil it?"
         )
         if nearby_vendors and len(nearby_vendors) > 0:
+            # Group businesses by owner
+            owner_businesses: dict[User, list] = {}
             for business in nearby_vendors:
                 owner: User = business.owner
-                body = body.format(
+                if owner not in owner_businesses:
+                    owner_businesses[owner] = []
+                owner_businesses[owner].append(business)
+
+            for owner, businesses in owner_businesses.items():
+                # Use the first business's distance for the notification body
+
+                trxn_opportunity_msg["txn_info"].update({
+                    "vendor_name": owner.full_name,
+                    "businesses": [
+                        {"id": b.id, "name": b.name}
+                        for b in businesses
+                    ]
+                })
+
+                for business in businesses:
+                    formatted_body = body.format(
                     business.distance.km,
                     "m" if business.distance.km < 1 else "km",
                     trxn_amount
                 )
-
-                NotificationUtil.create_notification_async.delay(
-                    title=title,
-                    body=body,
-                    business_id=business.id
-                )
-                # capture opportunity in the db
-                BusinessUtil.register_opportunity_for_business(
-                    trxn, business
-                )
+                    BusinessUtil.register_opportunity_for_business(
+                        trxn, business
+                    )
+                    NotificationUtil.create_notification_async.delay(
+                        title=title,
+                        body=formatted_body,
+                        business_id=business.id
+                    )
                 channel_layer = get_channel_layer()
                 async_to_sync(
                     channel_layer.group_send
@@ -296,6 +312,22 @@ class BusinessAsyncOperations:
             kwargs={"trxn_id": trxn_id, "custom_message_type": "No Available Vendors"}
         )
 
+
+    @classmethod
+    def _get_values_from_keys(
+        cls, data: list[dict], key_to_check: str = "business_id"
+    ) -> list:
+        return [item.get(key_to_check) for item in data if key_to_check in item]
+
+
+    @classmethod
+    def _get_data_whose_key_values_are_same(
+        cls, data: list[dict]
+    ) -> list[dict]:
+        owner_id_values = []
+        for item in data:
+            cls._get_values_from_keys()
+        return []
 
     @shared_task(
         bind=True, name="post-opportunity-acceptance-task"
