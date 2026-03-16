@@ -635,6 +635,10 @@ class BusinessUtil:
                 # prompt the vendor again for this transaction
                 NotificationUtil.send_socket_notification(trxn, skip_record=True)
                 BusinessAsyncOperations.other_vendor_transaction_notif.delay(txn_id=trxn.id)
+                BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
+                    eta=(trxn.last_updated + timezone.timedelta(seconds=30)),
+                    kwargs={"trxn_id": trxn_id, "custom_message_type": "Vendor Response Delayed"}
+                )
 
             case "cancel":
                 TransactionUtil.update_txn_status(client, {"status": CANCELLED})

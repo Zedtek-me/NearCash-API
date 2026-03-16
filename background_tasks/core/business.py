@@ -14,7 +14,7 @@ from dtos.generics import EmailArgsDto
 
 class BusinessAsyncOperations:
 
-    @shared_task(bind=True, name="notify_vendor_about_transaction")
+    @shared_task(bind=True, name="other-vendor-transaction-notif")
     def other_vendor_transaction_notif(
         self, txn_id: str | int, **kwargs
     ) -> bool:
@@ -98,7 +98,7 @@ class BusinessAsyncOperations:
         return user_as_business_client
 
 
-    @shared_task(bind=True, name="notify-client-of-txn-status")
+    @shared_task(bind=True, name="other-client-transaction-notif")
     def notify_client_of_txn_status(
         self: Task, txn_id: Union[str, int]
     ) -> bool:
