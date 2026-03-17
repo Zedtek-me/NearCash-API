@@ -701,8 +701,6 @@ class BusinessUtil:
             trxn.vendor = vendor_who_accepted_transaction.owner
             trxn.business = vendor_who_accepted_transaction
             trxn.save()
-
-        BusinessAsyncOperations.run_post_opportunity_acceptance_task(trxn_id=trxn.id)
         # transaction.on_commit(
         #     lambda: BusinessAsyncOperations.run_post_opportunity_acceptance_task(trxn_id=trxn.id)
         # )
