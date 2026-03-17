@@ -1,3 +1,4 @@
+import time
 from typing import Any, Dict, Union, Optional, Type
 
 from asgiref.sync import sync_to_async, async_to_sync
@@ -103,7 +104,8 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                 handled_response = await handler(**content)
             response: dict = self.MESSAGE_TYPE_HANDLERS.get(msg_type, {}).get("response", {})
         except Exception as e:
-            logger.exception(f"Error recording vendor location: {e}")
+            await sync_to_async(time.sleep)(5) #for debugging
+            logger.exception(f"Error occured:::::: {e}")
             await self.send_json({
                 "message_type": "error",
                 "message": str(e)
