@@ -146,7 +146,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
             case "opportunity_accepted":
                 if handled_response and handled_response is True:
                     message_type = "acceptance_ack"
-                    sync_to_async(
+                    await sync_to_async(
                         BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay
                     )(trxn_id=content.get("txn_id"))
                 else:
