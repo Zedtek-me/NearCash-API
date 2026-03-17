@@ -3,6 +3,7 @@ from celery import shared_task, Task
 from typing import Type, Union, Optional, List, Dict, Any
 from django.utils import timezone
 from django.conf import settings
+from django.db import transaction, connection
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -180,13 +181,16 @@ class BusinessAsyncOperations:
         in the space of that one minute.
         """
         from utils.wallet_utils.transactions import TransactionUtil
-        from apps.wallet.models import INITIATED
+        from apps.wallet.models import INITIATED, Transaction
         from apps.auths.models import User
+        # close connection to remove staleness
+        connection.close()
 
-        trxn = TransactionUtil.get_transaction(**{"id": trxn_id})
+        trxn = TransactionUtil.get_transaction(id=trxn_id)
         if not trxn:
             logger.error(f"no transaction with id {trxn_id}")
             return
+        trxn.refresh_from_db()
         status = trxn.status
         client: User = trxn.client
         channel_layer = get_channel_layer()
