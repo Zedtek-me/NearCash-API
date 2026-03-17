@@ -104,7 +104,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                 handled_response = await handler(**content)
             response: dict = self.MESSAGE_TYPE_HANDLERS.get(msg_type, {}).get("response", {})
         except Exception as e:
-            await sync_to_async(time.sleep)(5) #for debugging
+            # await sync_to_async(time.sleep)(5) #for debugging
             logger.exception(f"Error occured:::::: {e}")
             await self.send_json({
                 "message_type": "error",
@@ -149,7 +149,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                 if handled_response and handled_response is True:
                     message_type = "acceptance_ack"
                     await sync_to_async(
-                        BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay
+                        BusinessAsyncOperations.run_post_opportunity_acceptance_task
                     )(trxn_id=content.get("txn_id"))
                 else:
                     message_type = "opportunity_lost"
