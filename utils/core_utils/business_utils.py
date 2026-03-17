@@ -703,8 +703,6 @@ class BusinessUtil:
             trxn.save()
 
         transaction.on_commit(
-            lambda: BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay(
-                trxn_id=trxn.id
-            )
+            lambda: BusinessAsyncOperations.run_post_opportunity_acceptance_task(trxn_id=trxn.id)
         )
         return True

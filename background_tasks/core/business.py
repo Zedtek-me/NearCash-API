@@ -287,10 +287,10 @@ class BusinessAsyncOperations:
                     BusinessUtil.register_opportunity_for_business(
                         trxn, business
                     )
-                    NotificationUtil.create_notification_async.delay(
+                    NotificationUtil.record_notification(
                         title=title,
                         body=formatted_body,
-                        business_id=business.id
+                        entity=business
                     )
                 channel_layer = get_channel_layer()
                 async_to_sync(
@@ -307,7 +307,7 @@ class BusinessAsyncOperations:
         # notifies client later if no vendor takes action about the trxn in next 30 seconds
         BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
             eta=(
-                trxn.last_updated + timezone.timedelta(seconds=30)
+                trxn.last_updated + timezone.timedelta(seconds=45)
             ),
             kwargs={"trxn_id": trxn_id, "custom_message_type": "No Available Vendors"}
         )
@@ -330,10 +330,10 @@ class BusinessAsyncOperations:
         return []
 
     @shared_task(
-        bind=True, name="post-opportunity-acceptance-task"
+        bind=False, name="post-opportunity-acceptance-task"
     )
     def run_post_opportunity_acceptance_task(
-        self, trxn_id: str
+        trxn_id: str
     ):
         """
         all things to be done after a vendor accepts a transaction opportunity
