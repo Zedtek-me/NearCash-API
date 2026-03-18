@@ -217,7 +217,9 @@ class BusinessAsyncOperations:
             return
 
         if custom_message_type == "Vendor Response Delayed":
-            async_to_sync(channel_layer.group_send)(client.user_queue, message=client_message)
+            trxn.refresh_from_db()
+            if trxn.status == INITIATED:
+                async_to_sync(channel_layer.group_send)(client.user_queue, message=client_message)
 
 
     @shared_task(
