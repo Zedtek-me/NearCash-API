@@ -1,3 +1,4 @@
+import time
 from celery import shared_task, Task
 
 from typing import Type, Union, Optional, List, Dict, Any
@@ -203,6 +204,7 @@ class BusinessAsyncOperations:
         }
 
         if custom_message_type == "No Available Vendors":
+            time.sleep(2)
             with transaction.atomic():
                 locked_trxn = Transaction.objects.select_for_update().filter(
                     id=trxn_id, status=INITIATED
@@ -344,10 +346,10 @@ class BusinessAsyncOperations:
         return []
 
     @shared_task(
-        bind=False, name="post-opportunity-acceptance-task"
+        bind=True, name="post-opportunity-acceptance-task"
     )
     def run_post_opportunity_acceptance_task(
-        trxn_id: str
+        self, trxn_id: str
     ):
         """
         all things to be done after a vendor accepts a transaction opportunity
