@@ -181,7 +181,7 @@ class BusinessAsyncOperations:
         in the space of that one minute.
         """
         from utils.wallet_utils.transactions import TransactionUtil
-        from apps.wallet.models import INITIATED, Transaction
+        from apps.wallet.models import INITIATED, CANCELLED, Transaction
         from apps.auths.models import User
         # close connection to remove staleness
         connection.close()
@@ -210,6 +210,11 @@ class BusinessAsyncOperations:
                 user_channel,
                 message=client_message
             )
+
+        # cancel the transaction automatcally in the case where the message is "No Available Vendors"
+        if custom_message_type == "No Available Vendors":
+            trxn.status = CANCELLED
+            trxn.save()
 
 
     @shared_task(
