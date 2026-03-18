@@ -190,8 +190,7 @@ class BusinessAsyncOperations:
         if not trxn:
             logger.error(f"no transaction with id {trxn_id}")
             return
-        trxn.refresh_from_db()
-        status = trxn.status
+
         client: User = trxn.client
         channel_layer = get_channel_layer()
         trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn, for_vendor=False)
@@ -203,18 +202,22 @@ class BusinessAsyncOperations:
             }
         }
 
-        if status == INITIATED:
-            #prompt client to ether wait or let system recommend.
-            user_channel = client.user_queue
-            async_to_sync(channel_layer.group_send)(
-                user_channel,
-                message=client_message
-            )
-
-        # cancel the transaction automatcally in the case where the message is "No Available Vendors"
         if custom_message_type == "No Available Vendors":
-            trxn.status = CANCELLED
-            trxn.save()
+            with transaction.atomic():
+                locked_trxn = Transaction.objects.select_for_update().filter(
+                    id=trxn_id, status=INITIATED
+                ).first()
+                if not locked_trxn:
+                    # Vendor already accepted — status is no longer INITIATED; send nothing
+                    return
+                locked_trxn.status = CANCELLED
+                locked_trxn.save()
+            # Only reaches here if we confirmed INITIATED and cancelled atomically
+            async_to_sync(channel_layer.group_send)(client.user_queue, message=client_message)
+            return
+
+        if custom_message_type == "Vendor Response Delayed":
+            async_to_sync(channel_layer.group_send)(client.user_queue, message=client_message)
 
 
     @shared_task(

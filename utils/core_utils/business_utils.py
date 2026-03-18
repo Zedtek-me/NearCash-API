@@ -24,7 +24,7 @@ from apps.auths.models import User
 
 from apps.core.constants import LOCATION_SERVICES
 from apps.wallet.models import Transaction, TransactionOpportunity
-from apps.wallet.constants import FULFILLED, CANCELLED, IN_PROGRESS
+from apps.wallet.constants import FULFILLED, CANCELLED, IN_PROGRESS, INITIATED
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
@@ -695,7 +695,7 @@ class BusinessUtil:
                 raise CustomException(
                     f"couldn't find a transaction with id: {trxn_id} and ref: {trxn_ref}!"
                 )
-            if trxn.status == IN_PROGRESS:
+            if trxn.status != INITIATED:
                 return False
             trxn.status = IN_PROGRESS
             trxn.vendor = vendor_who_accepted_transaction.owner
