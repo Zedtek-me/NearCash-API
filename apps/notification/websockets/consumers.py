@@ -24,19 +24,19 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 
         self.MESSAGE_TYPE_HANDLERS = {
             "vendor_location_update": {
-                "handler": sync_to_async(BusinessUtil.record_vendor_location),
+                "handler": database_sync_to_async(BusinessUtil.record_vendor_location),
                 "response": {}
             },
             "client_location_update": {
-                "handler": sync_to_async(BusinessUtil.record_client_location),
+                "handler": database_sync_to_async(BusinessUtil.record_client_location),
                 "response": {}
             },
             "retrieve_vendor_latest_location": {
-                "handler": sync_to_async(BusinessUtil.get_vendor_latest_location),
+                "handler": database_sync_to_async(BusinessUtil.get_vendor_latest_location),
                 "response": {}
             },
             "retrieve_client_latest_location": {
-                "handler": sync_to_async(BusinessUtil.get_client_latest_location),
+                "handler": database_sync_to_async(BusinessUtil.get_client_latest_location),
                 "response": {}
             },
             "opportunity_accepted": {
