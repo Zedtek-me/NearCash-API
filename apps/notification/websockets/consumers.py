@@ -108,7 +108,8 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
             logger.exception(f"Error occured:::::: {e}")
             await self.send_json({
                 "message_type": "error",
-                "message": str(e)
+                "error_context": msg_type,
+                "message": str(e.args[0])
             })
             return
 
