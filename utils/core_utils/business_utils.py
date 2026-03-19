@@ -681,6 +681,9 @@ class BusinessUtil:
         locks trxn for a vendor who just accepted an opportunity.
         Native async — runs directly in the event loop with no thread pool overhead.
         """
+        import time
+        logger.debug("opportunity acceptance method was calledddd!!!!!!!!!!!!!!!!")
+        time.sleep(15)
         trxn_id, trxn_ref = data.get("txn_id"), data.get("txn_ref")
         vendor_business_id = data.get("business_id")
 
