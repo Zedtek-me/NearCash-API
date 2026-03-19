@@ -40,7 +40,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                 "response": {}
             },
             "opportunity_accepted": {
-                "handler": database_sync_to_async(BusinessUtil.accept_transaction_opportunity),
+                "handler": BusinessUtil.accept_transaction_opportunity,
                 "response": {}
             }
         }
