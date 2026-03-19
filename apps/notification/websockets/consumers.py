@@ -40,7 +40,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                 "response": {}
             },
             "opportunity_accepted": {
-                "handler": BusinessUtil.accept_transaction_opportunity,
+                "handler": database_sync_to_async(BusinessUtil.accept_transaction_opportunity),
                 "response": {}
             }
         }
@@ -88,7 +88,6 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content: dict, *args, **kwargs):
         """Handle incoming messages."""
-        from background_tasks.core.business import BusinessAsyncOperations
 
         logger.debug(f"content gotten on websocket msg receiver::::::::: {content}")
         msg_type = content.pop('message_type', "")
@@ -147,11 +146,9 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                     }
                 )
             case "opportunity_accepted":
-                logger.debug(f"opportunity acceptance handled response here::::: {handled_response}")
-                time.sleep(15)
+                
                 if handled_response and handled_response is True:
                     message_type = "acceptance_ack"
-                    BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay(trxn_id=content.get("txn_id"))
                 else:
                     message_type = "opportunity_lost"
                 response.update({

@@ -156,6 +156,26 @@ class CreateTransactionPolicy(graphene.Mutation):
             policy=policy
         )
 
+
+class AcceptTransactionOpportunity(graphene.Mutation):
+    message = graphene.String()
+
+    class Arguments:
+        txn_id = graphene.String()
+        txn_ref = graphene.String()
+        business_id = graphene.String()
+
+    @login_required
+    def mutate(self, info, **kwargs):
+        handled = BusinessUtil.accept_transaction_opportunity(**kwargs)
+        if handled and handled is True:
+            return AcceptTransactionOpportunity(
+                message="opportunity_ack"
+            )
+        return AcceptTransactionOpportunity(
+            message="opportunity_lost"
+        )
+
 class Mutation(graphene.ObjectType):
     create_business = CreateBusiness.Field(description="Create a new business for the user.")
     update_business = UpdateBusiness.Field(description="Updates an existing business")
@@ -165,4 +185,7 @@ class Mutation(graphene.ObjectType):
     )
     create_transaction_policy = CreateTransactionPolicy.Field(
         description="Creates a transaction policy for the given business"
+    )
+    accept_transaction_opportunity = AcceptTransactionOpportunity.Field(
+        description="Accepts a transaction opportunity broadcastd by the system"
     )

@@ -674,31 +674,23 @@ class BusinessUtil:
 
 
     @classmethod
-    async def accept_transaction_opportunity(
+    def accept_transaction_opportunity(
         cls, **data: dict
     ) -> bool:
         """
-        locks trxn for a vendor who just accepted an opportunity.
-        Native async — runs directly in the event loop with no thread pool overhead.
+        locks trxn for a vendor who just accepted an opportunity
         """
-        import time
-        logger.debug("opportunity acceptance method was calledddd!!!!!!!!!!!!!!!!")
-        time.sleep(15)
         trxn_id, trxn_ref = data.get("txn_id"), data.get("txn_ref")
         vendor_business_id = data.get("business_id")
-
-        vendor_who_accepted_transaction: Business | None = await Business.objects.filter(
-            id=vendor_business_id
-        ).select_related("owner").afirst()
+        vendor_who_accepted_transaction = cls.get_business({"id": vendor_business_id})
         if not vendor_who_accepted_transaction:
             raise CustomException(
                 message=f"couldn't find vendor with id: {vendor_business_id}"
             )
-
-        async with transaction.atomic():
-            trxn = await Transaction.objects.select_for_update().filter(
+        with transaction.atomic():
+            trxn = Transaction.objects.select_for_update().filter(
                 id=trxn_id, txn_ref=trxn_ref
-            ).afirst()
+            ).first()
             if not trxn:
                 raise CustomException(
                     f"couldn't find a transaction with id: {trxn_id} and ref: {trxn_ref}!"
@@ -708,6 +700,8 @@ class BusinessUtil:
             trxn.status = IN_PROGRESS
             trxn.vendor = vendor_who_accepted_transaction.owner
             trxn.business = vendor_who_accepted_transaction
-            await trxn.asave()
-
+            trxn.save()
+        transaction.on_commit(
+            lambda: BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay(trxn_id=trxn.id)
+        )
         return True
