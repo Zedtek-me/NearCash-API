@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.staging
+      dockerfile: Dockerfile
     image: near-cash-api
     container_name: near-cash-api
     hostname: near-cash-api
@@ -69,7 +69,7 @@ services:
   celery_worker:
     build:
       context: .
-      dockerfile: Dockerfile.staging
+      dockerfile: Dockerfile
     image: near-cash-celery-worker
     container_name: near-cash-celery-worker
     hostname: near-cash-celery-worker
@@ -91,7 +91,7 @@ services:
   celery_beat:
     build:
       context: .
-      dockerfile: Dockerfile.staging
+      dockerfile: Dockerfile
     image: near-cash-celery-beat
     container_name: near-cash-celery-beat
     hostname: near-cash-celery-beat
