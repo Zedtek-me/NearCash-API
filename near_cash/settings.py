@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.wallet",
     "apps.notification",
+    "apps.payment"
 ]
 
 # CORS_ALLOW_ALL_ORIGINS = True
@@ -202,6 +203,9 @@ GOOGLE_API_KEY = config("GOOGLE_API_KEY", cast=str, default='your_google_api_key
 GEOAPIFY_BASE_URL = config("GEOAPIFY_BASE_URL", cast=str, default='https://api.geoapify.com/v1')
 GEOAPIFY_API_KEY = config("GEOAPIFY_API_KEY", cast=str, default='your_geoapify_api_key')
 
+FLUTTERWAVE_BASE_URL = config("FLUTTERWAVE_BASE_URL", cast=str, default="http://api.flutterwave.com")
+FLUTTERWAVE_SECRET_KEY = config("FLUTTERWAVE_SECRET_KEY", cast=str, default=None)
+DEFAULT_HTTP_TIMEOUT = config("DEFAULT_HTTP_TIMEOUT", cast=int, default=10000)
 
 CHANNEL_LAYERS = {
     "default": {

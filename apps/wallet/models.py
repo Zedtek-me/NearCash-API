@@ -6,7 +6,8 @@ from utils.helpers.validators import Validator
 
 from .constants import (
     COLLECTION_MODES, IN_PROGRESS, CANCELLED, INITIATED,
-    FULFILLED, MEET_UP, STORE_WALK_IN, TXN_STATUSES
+    FULFILLED, MEET_UP, STORE_WALK_IN, TXN_STATUSES,
+    TRANSFER_MODES, BANK_TRANSFER
 )
 
 class FinancialAsset(BaseModel):
@@ -56,6 +57,9 @@ class Transaction(BaseModel):
     collection_mode = models.CharField(
         max_length=255, choices=COLLECTION_MODES, db_index=True, null=True
     )
+    transfer_mode = models.CharField(
+        max_length=255, choices=TRANSFER_MODES, default=BANK_TRANSFER
+    )
     txn_location = models.CharField(
         max_length=255, help_text="Location where the transaction is to be fulfilled"
     )
@@ -90,18 +94,23 @@ class Wallet(BaseModel):
     For a start, vendors would not be charged until they get to a certain
     txn fulfilment threshold or customer base threshold -- to be decided later.
     """
-    business_id = models.CharField(
-        max_length=25, help_text="Unique identifier for the business that owns the wallet"
+    STATUSES = [
+        ("ACTIVE", "ACTIVE"),
+        ("IN_ACTIVE", "IN_ACTIVE")
+    ]
+    user_id = models.CharField(
+        max_length=25, help_text="Unique identifier for the user that owns the wallet",
+        unique=True, null=True, blank=True
     )
     balance = models.FloatField(default=0.0)
     status = models.CharField(
-        max_length=255, null=True, blank=True
+        max_length=255, choices=STATUSES, default="ACTIVE"
     )
     currency = models.CharField(
         max_length=15, default="NGN", help_text="Currency of the wallet balance"
     )
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         db_table = 'wallet'
         verbose_name = "wallet"
         verbose_name_plural = "wallets"

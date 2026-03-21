@@ -16,11 +16,13 @@ from apps.auths.models import User
 from apps.core.models import Business
 from apps.wallet.models import Transaction
 from apps.wallet.constants import (
-    INITIATED, CANCELLED
+    INITIATED, CANCELLED, BANK_TRANSFER
 )
+from apps.payment.services import PaymentService
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
+from utils.wallet_utils.transactions import TransactionUtil
 
 
 class NotificationUtil:
@@ -201,32 +203,16 @@ class NotificationUtil:
             txn_status = "Approved" if txn_status == "In_Progress" else txn_status
             vendor: User = txn.vendor
             client: User = txn.client
+            mode_of_transfer = txn.transfer_mode or BANK_TRANSFER
             business: Business = txn.business
-            title = (
-                "New Transaction Interest" if txn_status == "Initiated"
-                else f" Transaction {txn_status}"
+            [
+                business_id, user_id, title, body
+            ] = cls._get_notification_title_and_body(
+                txn, client, for_vendor_notif, business
             )
-            body = (
-                    f"{client.full_name} has {txn_status} a transaction of amount "
-                    f"{txn.amount} {txn.currency}."
-                )
-            user_id = None
-            business_id = None
-
-            if for_vendor_notif:
-                business_id = business.id
-            else:
-                user_id = txn.client.id
-                title = (
-                    f"Transaction { txn_status }!"
-                    if txn_status in [ "Approved", "Declined" ]
-                    else "Transaction Status Update"
-                )
-                body = (
-                    f"{business.name} has {txn_status} your transaction of amount "
-                    f"{txn.amount}{txn.currency}."
-                )
-            # asynchronously persists notif log in the db
+            if txn_status == "Approved" and mode_of_transfer == BANK_TRANSFER:
+                #generate virtual account for the client to pay into
+                txn_info = TransactionUtil.update_trxn_info_with_account_details(txn, txn_info, client)
             if not skip_record:
                 cls.create_notification_async.delay(
                     title=title,
@@ -284,3 +270,42 @@ class NotificationUtil:
         notif_to_update.status = status.value
         notif_to_update.save()
         return notif_to_update
+
+
+    @classmethod
+    def _get_notification_title_and_body(
+        cls, txn: Transaction, client: User, for_vendor_notif: bool = True,
+        business: Business | None = None
+    ) -> list[str | int | None]:
+        """
+        formarts notification information for db recording
+        """
+        txn_status = txn.status
+        business = business or txn.business
+        title = (
+                "New Transaction Interest" if txn_status == "Initiated"
+                else f" Transaction {txn_status}"
+            )
+        body = (
+                f"{client.full_name} has {txn_status} a transaction of amount "
+                f"{txn.amount} {txn.currency}."
+            )
+        user_id = None
+        business_id = None
+
+        if for_vendor_notif:
+            business_id = business.id
+        else:
+            user_id = client.id
+            title = (
+                f"Transaction { txn_status }!"
+                if txn_status in [ "Approved", "Declined" ]
+                else "Transaction Status Update"
+            )
+            body = (
+                f"{business.name} has {txn_status} your transaction of amount "
+                f"{txn.amount}{txn.currency}."
+            )
+        return [
+            business_id, user_id, title, body
+        ]

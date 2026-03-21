@@ -70,3 +70,15 @@ class UserUtil:
         except Exception as e:
             logger.exception(f"Error parsing user type: {e}")
         return "CLIENT"
+
+
+    @classmethod
+    def fetch_user_thirdparty_customer_info(
+        cls, user: User, thirdparty: str = "flutterwave"
+    ) -> dict:
+        """
+        returns the customer information of a user previously recorded on a
+        thirdparty system -- payment system
+        """
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        return (profile.thirdparty_payment_customer_info or {}).get(thirdparty, {})

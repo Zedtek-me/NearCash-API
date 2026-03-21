@@ -23,7 +23,7 @@ app = Celery(
     'near_cash', 
     include=[
         "background_tasks.core.business",
-        "background_tasks.wallet",
+        "background_tasks.wallets",
         "utils.notifications.notifications"
     ],
     task_cls=BaseTask,

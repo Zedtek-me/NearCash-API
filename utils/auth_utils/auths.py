@@ -6,6 +6,7 @@ from apps.auths.models import User, SocialToken
 
 from interfaces.auths.interface import AuthInterface
 from utils.helpers.logs import logger
+from utils.helpers.exception import CustomException
 
 class AuthUtils:
 
@@ -15,7 +16,7 @@ class AuthUtils:
         self.auth_type = auth_type.name
         self.auth_service: AuthInterface = OAUTH_PLATFORMS[self.auth_type]
 
-    def get_auth_url(self) -> str:
+    def get_auth_url(self) -> str | None:
         """
         Gets the authentication URL for the specified OAuth platform.
         """
@@ -59,11 +60,14 @@ class AuthUtils:
             "password": password,
             "first_name": first_name,
             "last_name": last_name,
-            "username": username or f"{first_name} {last_name}"
+            "username": username or f"{first_name} {last_name}",
+            "meta": {
+                "picture": picture
+            }
         }
         user = User.objects.create_user(**user_data)
-        user.meta["picture"] = picture
-        user.save()
+        if not password:
+            user.set_unusable_password()
         token = cls.generate_user_local_auth_tokens(user)
         return [user, token]
 
@@ -109,3 +113,15 @@ class AuthUtils:
         payload = jwt_payload(user)
         token = jwt_encode(payload)
         return token
+
+
+    @classmethod
+    def fetch_user(
+        cls, filter_params: dict, raise_exception: bool = True
+    ) -> User:
+        user = User.objects.filter(**filter_params).first()
+        if not user and raise_exception:
+            raise CustomException(
+                message="User not found!"
+            )
+        return user
