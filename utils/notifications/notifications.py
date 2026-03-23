@@ -327,6 +327,7 @@ class NotificationUtil:
         trxn_status = "Approved" if trxn.status == "In_Progress" else trxn_status
         if trxn_status == "Approved" and trxn.transfer_mode == BANK_TRANSFER:
             channel_layer = get_channel_layer()
+            group = vendor.user_queue or ""
             msg_format = {
                 "message_type": "Pending Client Transfer",
                 "txn_info": trxn_info
@@ -334,7 +335,7 @@ class NotificationUtil:
             async_to_sync(
                 channel_layer.group_send
             )(
-                vendor.user_queue,
+                group,
                 {
                     "type": "send.notification",
                     "message": msg_format
