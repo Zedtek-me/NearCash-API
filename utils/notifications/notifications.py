@@ -323,8 +323,6 @@ class NotificationUtil:
         while the client transfers the amount to the escrow
         account
         """
-        from background_tasks.core.business import BusinessAsyncOperations
-
         trxn_status = trxn.status.title()
         trxn_status = "Approved" if trxn.status == "In_Progress" else trxn_status
         if trxn_status == "Approved" and trxn.transfer_mode == BANK_TRANSFER:
