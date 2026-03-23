@@ -42,7 +42,7 @@ def refresh_access_token(self):
             }
         )
         logger.debug(f"response from access token generation on flutterwave::: {response}")
-        if not response or response.get("status") == "error":
+        if not response or response.get("status") == "failed":
             logger.error(f"unable to refresh flutterwave access token::: {response}")
             return
         token_expiry = response.get("expires_in", 600)

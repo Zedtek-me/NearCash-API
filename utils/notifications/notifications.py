@@ -239,6 +239,7 @@ class NotificationUtil:
             async_to_sync(
                 channel_layer.group_send
             )(channel, socket_notification_data)
+            cls._optionally_tell_vendor_to_wait_on_client(vendor, txn, txn_info)
         except Exception as e:
             logger.exception(f"exception when publishing socket notification>>>> {e}")
             return False
@@ -309,3 +310,35 @@ class NotificationUtil:
         return [
             business_id, user_id, title, body
         ]
+
+
+    @classmethod
+    def _optionally_tell_vendor_to_wait_on_client(
+        cls, vendor: User, trxn: Transaction, trxn_info: dict
+    ):
+        """
+        optionally checks to see that the transction
+        has been approved by the vendor.
+        If approved, it notifies the vendor to wait
+        while the client transfers the amount to the escrow
+        account
+        """
+        from background_tasks.core.business import BusinessAsyncOperations
+
+        trxn_status = trxn.status.title()
+        trxn_status = "Approved" if trxn.status == "In_Progress" else trxn_status
+        if trxn_status == "Approved" and trxn.transfer_mode == BANK_TRANSFER:
+            channel_layer = get_channel_layer()
+            msg_format = {
+                "message_type": "Pending Client Transfer",
+                "txn_info": trxn_info
+            }
+            async_to_sync(
+                channel_layer.group_send
+            )(
+                vendor.user_queue,
+                {
+                    "type": "send.notification",
+                    "message": msg_format
+                }
+            )

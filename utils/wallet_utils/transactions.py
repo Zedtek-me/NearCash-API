@@ -102,7 +102,7 @@ class TransactionUtil:
         from apps.payment.services import PaymentService
 
         # flutterwave first
-        p_s = PaymentService()
+        p_s = PaymentService(provider="flutterwave")
         account_response = p_s.get_virtual_account(client=client, trxn=trxn)
         if not account_response or account_response.get("status") != "success":
             p_s.__class__.provider = "paystack"
@@ -114,7 +114,10 @@ class TransactionUtil:
         account_data = account_response.get("data") or {}
         account_data.pop("id", None)
         account_data.pop("customer_id", None)
-        account_data.update({"provider": p_s.provider})
+        account_data.update({
+            "provider": p_s.provider,
+            "account_name": client.full_name
+        })
         trxn_info.update({
             "account_info": account_data
         })

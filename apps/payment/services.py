@@ -112,9 +112,8 @@ class PaymentService(PaymentInterface):
         cls, client: User, trxn: Transaction
     ) -> dict:
         """
+        gets virtual account from paystack
         """
-        from background_tasks.auths.flutterwave import refresh_access_token as refresh_flutterwave_access_token
-
         client_customer_info = cls._create_client_as_account_customer(client)
         if not client_customer_info or client_customer_info.get("id") is None:
             logger.error(f"couldn't retrieve client customer info.\n got response: {client_customer_info}")
