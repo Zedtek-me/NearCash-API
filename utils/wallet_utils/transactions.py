@@ -75,7 +75,6 @@ class TransactionUtil:
             BusinessAsyncOperations.notify_vendor_about_transaction.delay(txn_id=txn.id)
             return
 
-        NotificationUtil.send_socket_notification(txn, for_vendor_notif=False)
         BusinessAsyncOperations.notify_client_of_txn_status.delay(
             txn_id=txn.id
         )
@@ -110,9 +109,13 @@ class TransactionUtil:
             account_response = p_s.get_virtual_account(client=client, trxn=trxn)
         # then try paystack if needed
         if not account_response or account_response.get("status") != "success":
-            logger.warning("unable to generate virtual account!!!")
+            logger.error("unable to generate virtual account!!!")
             account_response =  {}
+        account_data = account_response.get("data") or {}
+        account_data.pop("id", None)
+        account_data.pop("customer_id", None)
+        account_data.update({"provider": p_s.provider})
         trxn_info.update({
-            "account_info": account_response
+            "account_info": account_data
         })
         return trxn_info

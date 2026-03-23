@@ -128,10 +128,15 @@ class BusinessAsyncOperations:
         from apps.notification.email.app_emails import EmailService
 
         txn = TransactionUtil.get_transaction(**{"id": txn_id})
+        if not txn:
+            raise CustomException(
+                "could not find a transaction with id: %"%txn_id
+            )
         txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
             txn, for_vendor=False
         )
 
+        NotificationUtil.send_socket_notification(txn, for_vendor_notif=False)
         email_data: EmailArgsDto = {
             "subject": "Transaction is being processed!",
             "body": "txn_status_update.html",

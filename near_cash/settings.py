@@ -25,6 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("SECRET_KEY", cast=str, default='django-insecure-default-key')
+FERNET_TOKEN_KEY = config("FERNET_TOKEN_KEY", cast=str)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("ENVIRONMENT", "production").lower() in ("development", "dev", "local", "staging")
@@ -205,7 +206,16 @@ GEOAPIFY_API_KEY = config("GEOAPIFY_API_KEY", cast=str, default='your_geoapify_a
 
 FLUTTERWAVE_BASE_URL = config("FLUTTERWAVE_BASE_URL", cast=str, default="http://api.flutterwave.com")
 FLUTTERWAVE_SECRET_KEY = config("FLUTTERWAVE_SECRET_KEY", cast=str, default=None)
+FLUTTERWAVE_CLIENT_ID = config("FLUTTERWAVE_CLIENT_ID", cast=str)
+FLUTTERWAVE_CLIENT_SECRET = config("FLUTTERWAVE_CLIENT_SECRET", cast=str)
+FLUTTERWAVE_OAUTH_URL = config(
+    "FLUTTERWAVE_OAUTH_URL", cast=str,
+    default="https://idp.flutterwave.com/realms/flutterwave/protocol/openid-connect/token"
+)
+FLUTTERWAVE_ACCESS_TOKEN = config("FLUTTERWAVE_ACCESS_TOKEN", cast=str)
 DEFAULT_HTTP_TIMEOUT = config("DEFAULT_HTTP_TIMEOUT", cast=int, default=10000)
+
+DOTENV_FILENAME = config("DOTENV_FILENAME", cast=str)
 
 CHANNEL_LAYERS = {
     "default": {
@@ -225,6 +235,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "update_inprogress_transactions",
         "schedule": crontab(
             day_of_week='*', hour='*/6', minute=0
+        )
+    },
+    "refresh-flutterwave-access-token": {
+        "task": "refresh-flutterwave-access-token",
+        "schedule": crontab(
+            day_of_week="*", hour="*", minute="*/3"
         )
     }
 }

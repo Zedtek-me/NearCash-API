@@ -24,7 +24,8 @@ app = Celery(
     include=[
         "background_tasks.core.business",
         "background_tasks.wallets",
-        "utils.notifications.notifications"
+        "utils.notifications.notifications",
+        "background_tasks.auths.flutterwave"
     ],
     task_cls=BaseTask,
     namespace="CELERY"

@@ -5,9 +5,12 @@ from utils.https.client import Client
 from utils.helpers.exception import CustomException
 from utils.helpers.general import generate_unique_id
 from utils.helpers.logs import logger
+from utils.helpers.encryption import decrypt_data_with_fernet
 
 from apps.auths.models import User, UserProfile
 from apps.wallet.models import Transaction
+from apps.payment.models import PaymentPlatformToken
+
 
 
 class PaymentService(PaymentInterface):
@@ -16,8 +19,7 @@ class PaymentService(PaymentInterface):
             "url": f"{settings.FLUTTERWAVE_BASE_URL}",
             "default_headers": {
                 "Accept": "application/json",
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {settings.FLUTTERWAVE_SECRET_KEY}"
+                "Content-Type": "application/json"
             }
         }
     }
@@ -28,10 +30,16 @@ class PaymentService(PaymentInterface):
     def __init__(self, provider: str = "flutterwave"):
         if provider not in self.PROVIDERS:
             raise CustomException(f"invalid provider given: {provider}")
+
+        url = self.PROVIDERS.get(provider, {}).get("url", "")
+        headers = self.PROVIDERS.get(provider, {}).get("default_headers", {})
+        token_info = PaymentPlatformToken.fetch_token_info(provider.upper())
+        decrypted_access_token = decrypt_data_with_fernet(token_info.token) if token_info and token_info.token else ""
+        headers["Authorization"] = f"Bearer {decrypted_access_token}"
         self.__class__.provider = provider
         self.__class__.client = Client(
-            base_url=self.PROVIDERS.get(provider, {}).get("url", ""),
-            headers=self.PROVIDERS.get(provider, {}).get("default_headers", {})
+            base_url=url,
+            headers=headers
         )
 
     @classmethod
@@ -41,51 +49,12 @@ class PaymentService(PaymentInterface):
         """
         fetches virtual account from an escrow provider
         """
-        client_customer_info = cls._create_client_as_account_customer(client)
-        logger.debug(f"client customer info retrieved:::: {client_customer_info}")
-
-        endpoint = "/virtual-accounts"
-        headers = {
-            "X-Idempotency-Key": generate_unique_id(),
-            "X-Trace-Id": generate_unique_id(30)
-        }
-        payload = {
-            "customer_id": client_customer_info.get("id"),
-            "reference": trxn.txn_ref,
-            "expiry": 60,
-            "amount": trxn.amount,
-            "currency": trxn.currency,
-            "account_type": "dynamic",
-            "narration": "Cash Request Locking",
-            "nin": client.profile.nin
-        }
-        response = cls.client.post(
-            endpoint=endpoint,
-            headers=headers,
-            payload=payload
-        )
-        logger.debug(f"virtual account creation response:::: {response}")
-        if not response or response.get("status") != "success":
-            # TODO: rather than raising an exception here,
-            # we want to publish to both the client and vendor
-            # that the system is unable to generate virtual account now
-            # Part of the messaget to the client will involve asking if they want
-            # to switch to card form of transfer, while message to the vendor will
-            # include something like: confirming if client would like to switch to card
-            # if client responds with "switch_to_card", then we notify the vendor to proceed
-            # in fulfilling the transaction. Otherwise, we cancel the transaction, and notify the vendor
-            # NOTE: requesting client's decision will come with expiry. If client doesn't respond within
-            # the given time-frame, the transaction is cancelled.
-            raise CustomException(
-                message="Unable to create virtual account at the moment!"
+        response = {}
+        if cls.provider == "flutterwave":
+            response = cls.get_flutterwave_virtual_account(
+                client, trxn
             )
-        account_data = response.get("data", {})
-        trxn.meta["virtual_account"] = {
-            "provider": cls.provider,
-            "info": account_data
-        }
-        trxn.save()
-        return account_data
+        return response
 
 
     @classmethod
@@ -136,3 +105,60 @@ class PaymentService(PaymentInterface):
         profile.thirdparty_payment_customer_info[provider] = response.get("data", {})
         profile.save()
         return response.get("data", {})
+
+
+    @classmethod
+    def get_flutterwave_virtual_account(
+        cls, client: User, trxn: Transaction
+    ) -> dict:
+        """
+        """
+        from background_tasks.auths.flutterwave import refresh_access_token as refresh_flutterwave_access_token
+
+        client_customer_info = cls._create_client_as_account_customer(client)
+        if not client_customer_info or client_customer_info.get("id") is None:
+            logger.error(f"couldn't retrieve client customer info.\n got response: {client_customer_info}")
+            return {}
+
+        endpoint = "/virtual-accounts"
+        headers = {
+            "X-Idempotency-Key": generate_unique_id(),
+            "X-Trace-Id": generate_unique_id(30)
+        }
+        payload = {
+            "customer_id": client_customer_info.get("id"),
+            "reference": trxn.txn_ref,
+            "expiry": 60,
+            "amount": trxn.amount,
+            "currency": trxn.currency,
+            "account_type": "dynamic",
+            "narration": "lock cash request with vendor",
+            "nin": client.profile.nin
+        }
+        response = cls.client.post(
+            endpoint=endpoint,
+            headers=headers,
+            payload=payload
+        )
+        logger.debug(f"virtual account creation response:::: {response}")
+        if not response or response.get("status") != "success":
+            # TODO: rather than raising an exception here,
+            # we want to publish to both the client and vendor
+            # that the system is unable to generate virtual account now
+            # Part of the messaget to the client will involve asking if they want
+            # to switch to card form of transfer, while message to the vendor will
+            # include something like: confirming if client would like to switch to card
+            # if client responds with "switch_to_card", then we notify the vendor to proceed
+            # in fulfilling the transaction. Otherwise, we cancel the transaction, and notify the vendor
+            # NOTE: requesting client's decision will come with expiry. If client doesn't respond within
+            # the given time-frame, the transaction is cancelled.
+            raise CustomException(
+                message="Unable to create virtual account at the moment!"
+            )
+        account_data = response.get("data", {})
+        trxn.meta["virtual_account"] = {
+            "provider": cls.provider,
+            "info": account_data
+        }
+        trxn.save()
+        return response

@@ -27,16 +27,19 @@ class Client(HttpInterface):
         return self.parser.parse_response(response)
 
 
-    def post(self, endpoint: str, headers: dict | None = None, payload: dict | None = None) -> dict:
+    def post(
+        self, endpoint: str, headers: dict | None = None, payload: dict | None = None,
+        params: dict | None = None, data: dict | None = None
+    ) -> dict:
         if headers:
             self.headers = {
                 **(self.headers or {}),
                 **headers
             }
         endpoint = f"{self.base_url}{endpoint}"
-        logger.debug(f"headers: {self.headers}\n payload: {payload}\n endpoint:: {endpoint}")
         response = requests.request(
             "POST", url=endpoint, headers=self.headers,
-            json=payload, timeout=settings.DEFAULT_HTTP_TIMEOUT
+            json=payload, timeout=settings.DEFAULT_HTTP_TIMEOUT,
+            params=params, data=data
         )
         return self.parser.parse_response(response)
