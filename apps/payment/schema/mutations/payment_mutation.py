@@ -28,7 +28,7 @@ class GenerateVirtualAccount(graphene.Mutation):
         current_virtual_account_info = trxn.meta.get("virtual_account", {})
         provider = current_virtual_account_info.get("provider")
         p_s = PaymentService(provider)
-        response = p_s.get_virtual_account(client_user, trxn, reference=f"{trxn.txn_ref}-regen-{trxn.id}")
+        response = p_s.get_virtual_account(client_user, trxn, reference=f"{trxn.txn_ref}-regen-{generate_unique_id(5)}")
         data = response.get("data", {})
         data.pop("customer_id", None)
         data.pop("id", None)
