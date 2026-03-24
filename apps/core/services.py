@@ -185,9 +185,7 @@ class ClientService:
             data, client, fin_asset
         )
         txn = TransactionUtil.create_transaction(**txn_data)
-        # send websocket notification to vendor before other async operations
-        NotificationUtil.send_socket_notification(txn)
-        BusinessAsyncOperations.other_vendor_transaction_notif.delay(txn_id=txn.id)
+        BusinessAsyncOperations.notify_vendor_about_transaction.delay(txn_id=txn.id)
         schedule_time = txn.date_created + timezone.timedelta(seconds=30)
         BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
             eta=schedule_time,
@@ -248,6 +246,7 @@ class ClientService:
             "currency": asset.currency_code,
             "business": asset.business,
             "collection_mode": data.get("collection_mode").value,
+            "transfer_mode": data.get("transfer_mode").value,
             "extra_charge": kwargs.get("extra_charge", {}),
             "txn_location": data.get("collection_location"),
             "description": f"Withdrawal transaction initiated by {client.email}.",

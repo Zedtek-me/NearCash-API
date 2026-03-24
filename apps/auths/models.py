@@ -98,6 +98,31 @@ class UserProfile(BaseModel):
     )
     phone_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
     profile_picture = models.URLField(max_length=500, null=True, blank=True)
+    remittance_account_number = models.CharField(
+        max_length=15, null=True, blank=True,
+        help_text=(
+            "Account number into which money is to be paid into, by the system"
+            "-- mostly needed for vendors remittance"
+        )
+    )
+    remittance_bank_code = models.CharField(
+        max_length=10, null=True, blank=True,
+        help_text=(
+            "CBN code for the bank that issued the account number"
+        )
+    )
+    remittance_bank_name = models.CharField(
+        max_length=255, null=True, blank=True
+    )
+    thirdparty_payment_customer_info = models.JSONField(
+        default=dict, null=True, blank=True
+    )
+    nin = models.CharField(
+        max_length=255, null=True, blank=True
+    )
+    bvn = models.CharField(
+        max_length=255, null=True, blank=True
+    )
 
     def __str__(self):
         return f"{self.user.email} -> {self.phone_number}"

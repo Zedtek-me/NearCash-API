@@ -3,7 +3,10 @@ import uuid
 from django.db.models import Q
 
 from apps.wallet.models import Transaction
+from apps.auths.models import User
+
 from utils.helpers.exception import CustomException
+from utils.helpers.logs import logger
 
 from apps.wallet.constants import (
     IN_PROGRESS, CANCELLED,
@@ -69,11 +72,9 @@ class TransactionUtil:
         txn.save()
         # if client is the one who cancelled, notify vendor
         if status == CANCELLED and user.id == txn.client.id:
-            NotificationUtil.send_socket_notification(txn)
-            BusinessAsyncOperations.other_vendor_transaction_notif.delay(txn_id=txn.id)
+            BusinessAsyncOperations.notify_vendor_about_transaction.delay(txn_id=txn.id)
             return
 
-        NotificationUtil.send_socket_notification(txn, for_vendor_notif=False)
         BusinessAsyncOperations.notify_client_of_txn_status.delay(
             txn_id=txn.id
         )
@@ -88,3 +89,36 @@ class TransactionUtil:
         update the txn status appropriately -- whether successful or canceled
         """
         ...
+
+
+    @classmethod
+    def update_trxn_info_with_account_details(
+        cls, trxn: Transaction, trxn_info: dict, client: User
+    ) -> dict:
+        """
+        updates the given transaction info
+        with a virtual account detail generated via account provider (flutter or paystack)
+        """
+        from apps.payment.services import PaymentService
+
+        # flutterwave first
+        p_s = PaymentService(provider="flutterwave")
+        account_response = p_s.get_virtual_account(client=client, trxn=trxn)
+        if not account_response or account_response.get("status") != "success":
+            p_s.__class__.provider = "paystack"
+            account_response = p_s.get_virtual_account(client=client, trxn=trxn)
+        # then try paystack if needed
+        if not account_response or account_response.get("status") != "success":
+            logger.error("unable to generate virtual account!!!")
+            account_response =  {}
+        account_data = account_response.get("data") or {}
+        account_data.pop("id", None)
+        account_data.pop("customer_id", None)
+        account_data.update({
+            "provider": p_s.provider,
+            "account_name": client.full_name
+        })
+        trxn_info.update({
+            "account_info": account_data
+        })
+        return trxn_info

@@ -5,7 +5,7 @@ from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
 
 from apps.core.models import Business
-from apps.wallet.models import FinancialAsset
+from apps.wallet.models import FinancialAsset, Wallet
 
 class WalletUtil:
     """all utilities related to wallet operations"""
@@ -57,3 +57,35 @@ class WalletUtil:
             search_filter,
             **filters
         )
+
+
+    @classmethod
+    def get_wallet(
+        cls, filter_params: dict, raise_exception: bool = True
+    ) -> Wallet:
+        """
+        fetches wallet matching the given params
+        """
+        wallet = Wallet.objects.filter(**filter_params).first()
+        if not wallet and raise_exception:
+            raise CustomException(
+                message="No wallet found with the provided filter params!"
+            )
+        return wallet
+
+
+    @classmethod
+    def create_wallet(
+        cls, params: dict
+    ) -> Wallet:
+        """creates a wallet"""
+        currency = params.pop("currency", None)
+        wallet = Wallet.objects.create(**params)
+        if not currency:
+            # default currency to NGN for now, pending future implementation of wallet type
+            currency = "NGN"
+        wallet.currency = currency
+        wallet.save()
+        return wallet
+
+        

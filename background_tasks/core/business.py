@@ -1,4 +1,3 @@
-import time
 from celery import shared_task, Task
 
 from typing import Type, Union, Optional, List, Dict, Any
@@ -16,8 +15,8 @@ from dtos.generics import EmailArgsDto
 
 class BusinessAsyncOperations:
 
-    @shared_task(bind=True, name="other-vendor-transaction-notif")
-    def other_vendor_transaction_notif(
+    @shared_task(bind=True, name="notify-vendor-about-transaction")
+    def notify_vendor_about_transaction(
         self, txn_id: str | int, **kwargs
     ) -> bool:
         """
@@ -38,6 +37,8 @@ class BusinessAsyncOperations:
             logger.error(f"Transaction with id {txn_id} not found.")
             return False
 
+        # send websocket notification to vendor before other async operations
+        NotificationUtil.send_socket_notification(txn)
         txn_client: User | None = txn.client
         BusinessAsyncOperations.update_client_last_patronized(
             txn_client, txn
@@ -84,6 +85,21 @@ class BusinessAsyncOperations:
         return trxn
 
     @classmethod
+    def return_transaction_amount_to_vendor_available_liquidity(
+        cls, business, trxn
+    ):
+        """
+        returns a transaction amount back to a vendor's available liquidity
+        happens mostly whe a transaction is cancelled or rejected.
+        """
+        amount = trxn.amount or 0.0
+        business.available_liquidity += amount
+        business.save()
+        trxn.meta["liquidity_returned"] = True
+        trxn.save(update_fields=["meta"])
+        return trxn
+
+    @classmethod
     def update_client_last_patronized(
         cls, client: Type["User"], txn: Type["Transaction"]
     ):
@@ -112,10 +128,15 @@ class BusinessAsyncOperations:
         from apps.notification.email.app_emails import EmailService
 
         txn = TransactionUtil.get_transaction(**{"id": txn_id})
+        if not txn:
+            raise CustomException(
+                "could not find a transaction with id: %"%txn_id
+            )
         txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
             txn, for_vendor=False
         )
 
+        NotificationUtil.send_socket_notification(txn, for_vendor_notif=False)
         email_data: EmailArgsDto = {
             "subject": "Transaction is being processed!",
             "body": "txn_status_update.html",
@@ -145,6 +166,7 @@ class BusinessAsyncOperations:
                     "amount": txn.amount,
                     "client_current_location": txn.meta.get("client_current_location", {}),
                     "mode": txn.collection_mode,
+                    "transfer_mode": txn.transfer_mode,
                     "vendor_name": txn.business.name,
                     "client_name": txn.client.full_name,
                     "client_phone_number": txn.client.phone_number,
@@ -157,6 +179,7 @@ class BusinessAsyncOperations:
                         "txn_ref": txn.txn_ref,
                         "status": txn.status,
                         "amount": txn.amount,
+                        "transfer_mode": txn.transfer_mode,
                         "vendor_name": (txn.business and txn.business.name) or "",
                         "client_name": txn.client.full_name,
                         "client_phone_number": txn.client.phone_number,
@@ -204,7 +227,6 @@ class BusinessAsyncOperations:
         }
 
         if custom_message_type == "No Available Vendors":
-            time.sleep(2)
             with transaction.atomic():
                 locked_trxn = Transaction.objects.select_for_update().filter(
                     id=trxn_id, status=INITIATED
@@ -214,7 +236,6 @@ class BusinessAsyncOperations:
                     return
                 locked_trxn.status = CANCELLED
                 locked_trxn.save()
-            # Only reaches here if we confirmed INITIATED and cancelled atomically
             async_to_sync(channel_layer.group_send)(client.user_queue, message=client_message)
             return
 
@@ -323,7 +344,7 @@ class BusinessAsyncOperations:
         # notifies client later if no vendor takes action about the trxn in next 30 seconds
         BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
             eta=(
-                trxn.last_updated + timezone.timedelta(seconds=45)
+                trxn.last_updated + timezone.timedelta(seconds=30)
             ),
             kwargs={"trxn_id": trxn_id, "custom_message_type": "No Available Vendors"}
         )

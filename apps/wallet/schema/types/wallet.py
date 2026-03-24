@@ -5,7 +5,8 @@ from apps.wallet.models import (
     Wallet, FinancialAsset, Transaction
 )
 from apps.wallet.constants import (
-    IN_PROGRESS, INITIATED, DECLINED, CANCELLED
+    IN_PROGRESS, INITIATED, DECLINED, CANCELLED,
+    CARD, BANK_TRANSFER
 )
 
 from apps.core.schema.types.business_types import (
@@ -38,12 +39,18 @@ class AssetInputType(graphene.InputObjectType):
     charge_rate = graphene.Float(required=True)
 
 
+
+class TransferModeEnum(graphene.Enum):
+    CARD = CARD
+    BANK_TRANSFER = BANK_TRANSFER
+
 class InitiateTransactionInputType(graphene.InputObjectType):
     vendor_id = graphene.String(required=True)
     asset_id = graphene.String(required=True)
     amount_to_withdraw = graphene.Float(required=True)
     client_current_coordinates = PointFieldType(required=True)
     collection_mode = CashCollectionModes(required=True)
+    transfer_mode = TransferModeEnum(required=True)
     collection_location = graphene.String(required=False)
 
 
