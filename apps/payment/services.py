@@ -119,10 +119,13 @@ class PaymentService(PaymentInterface):
             logger.error(f"couldn't retrieve client customer info.\n got response: {client_customer_info}")
             return {}
 
+        trxn_virtual_acc_rec = trxn.meta.get("virtual_account") or {}
+        idempotency_key = trxn_virtual_acc_rec.get("txn_idempotency_key") or generate_unique_id()
+        trace_id = trxn_virtual_acc_rec.get("txn_trace_id") or generate_unique_id(30)
         endpoint = "/virtual-accounts"
         headers = {
-            "X-Idempotency-Key": generate_unique_id(),
-            "X-Trace-Id": generate_unique_id(30)
+            "X-Idempotency-Key": idempotency_key,
+            "X-Trace-Id": trace_id
         }
         payload = {
             "customer_id": client_customer_info.get("id"),
@@ -131,9 +134,12 @@ class PaymentService(PaymentInterface):
             "amount": trxn.amount,
             "currency": trxn.currency,
             "account_type": "dynamic",
-            "narration": "lock cash request with vendor",
-            "nin": client.profile.nin
+            "narration": f"{client.full_name} to lock request with vendor."
         }
+        if client.profile.nin:
+            payload.update({"nin": client.profile.nin})
+        else:
+            payload.update({"bvn": client.profile.bvn})
         response = cls.client.post(
             endpoint=endpoint,
             headers=headers,
@@ -157,7 +163,9 @@ class PaymentService(PaymentInterface):
         account_data = response.get("data", {})
         trxn.meta["virtual_account"] = {
             "provider": cls.provider,
-            "info": account_data
+            "info": account_data,
+            "txn_idempotency_key": idempotency_key,
+            "txn_trace_id": trace_id
         }
         trxn.save()
         return response
