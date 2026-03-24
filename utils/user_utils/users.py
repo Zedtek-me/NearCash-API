@@ -21,17 +21,26 @@ class UserUtil:
         first_time = cls.check_first_time(user)
         picture_url = data.pop("picture", None) or user.meta.get("picture")
         phone_number = data.pop("phone_number", None)
+        bvn = data.pop("bvn", None)
+        nin = data.pop("nin", None)
+        remittance_bank_code = data.pop("remittance_bank_code", None)
+        remittance_bank_name = data.pop("remittance_bank_name", None)
+        remittance_account_number = data.pop("remittance_account_number", None)
         for key, value in data.items():
             if hasattr(user, key) and value is not None:
                 setattr(user, key, value)
         user.meta.update({"user_type": user_type, "picture": picture_url})
         user.save()
         profile, _ = UserProfile.objects.get_or_create(user=user)
-        if phone_number:
-            profile.phone_number = phone_number
-
-        profile.profile_picture = picture_url
-        profile.save()
+        # other profile data updates
+        cls._update_other_profile_data(
+            profile, bvn=bvn, nin=nin,
+            remittance_account_number=remittance_account_number,
+            remittance_bank_name=remittance_bank_name,
+            remittance_bank_code=remittance_bank_code,
+            phone_number=phone_number,
+            profile_picture=picture_url
+        )
         if user_type == "VENDOR" and first_time:
             business_data = data.pop("business_data", {})
             BusinessUtil.create_business(
@@ -82,3 +91,14 @@ class UserUtil:
         """
         profile, _ = UserProfile.objects.get_or_create(user=user)
         return (profile.thirdparty_payment_customer_info or {}).get(thirdparty, {})
+
+
+    @classmethod
+    def _update_other_profile_data(
+        cls, profile: UserProfile, **data
+    ) -> UserProfile:
+        for key, value in data.items():
+            if hasattr(profile, key) and value is not None:
+                setattr(profile, key, value)
+        profile.save()
+        return profile

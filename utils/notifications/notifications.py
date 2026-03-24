@@ -281,7 +281,8 @@ class NotificationUtil:
         """
         formarts notification information for db recording
         """
-        txn_status = txn.status
+        txn_status = txn.status.title()
+        txn_status = "Approved" if txn_status == "In_Progress" else txn_status
         business = business or txn.business
         title = (
                 "New Transaction Interest" if txn_status == "Initiated"

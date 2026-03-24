@@ -62,6 +62,11 @@ class UpdateUserInputType(graphene.InputObjectType):
     username = graphene.String(required=False)
     picture = graphene.String(required=False)
     phone_number = graphene.String(required=False)
+    bvn = graphene.String(required=False)
+    nin = graphene.String(required=False)
+    remittance_bank_code = graphene.String(required=False)
+    remittance_bank_name = graphene.String(required=False)
+    remittance_account_number = graphene.String(required=False)
 
     # business data
     business_data = CreateBusinessInputType(required=False)
