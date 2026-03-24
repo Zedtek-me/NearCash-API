@@ -380,6 +380,7 @@ class BusinessUtil:
         trxn_id = query_data.get("txn_id")
         trxn = TransactionUtil.get_transaction(**{"id": trxn_id})
         vendor_business_id = trxn and trxn.business.id
+        vendor_user = trxn and trxn.vendor
         buz_client = BusinessClient.objects.filter(
             client__id=client_id, business__id=vendor_business_id
         ).first()
@@ -394,10 +395,25 @@ class BusinessUtil:
         client_latest_loc: CurrentLocation | None = client.current_locations.first()
         if not client_latest_loc:
             return {}
-        return {
+        client_loc = {
             "longitude": client_latest_loc.location.x,
             "latitude": client_latest_loc.location.y
         }
+        if vendor_user:
+            vendor_loc: CurrentLocation | None = vendor_user.current_locations.first()
+            point1 = (
+                client_loc.get("latitude"),
+                client_loc.get("longitude")
+            )
+            point2 = (
+                vendor_loc and vendor_loc.location.y,
+                vendor_loc and vendor_loc.location.x
+            )
+            client_loc["distance_from_vendor"] = GeolocationUtils.calculate_distance(
+                point1, point2
+            )
+        return client_loc
+
 
     @classmethod
     def record_vendor_location(

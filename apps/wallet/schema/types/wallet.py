@@ -25,9 +25,17 @@ class WalletType(DjangoObjectType):
         fields = "__all__"
 
 class TransactionType(DjangoObjectType):
+    awaiting_transfer = graphene.Boolean()
+
     class Meta:
         model = Transaction
         fields = "__all__"
+
+    def resolve_awaiting_transfer(self, info):
+        virtual_account_info = self.meta.get("virtual_account", {})
+        transfer_status = virtual_account_info.get("transfer_status", "")
+        trxn_status = self.status
+        return self.status == IN_PROGRESS and self.transfer_mode == BANK_TRANSFER and transfer_status != "success"
 
 
 class AssetInputType(graphene.InputObjectType):

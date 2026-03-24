@@ -52,7 +52,7 @@ class PaymentService(PaymentInterface):
         response = {}
         if cls.provider == "flutterwave":
             response = cls.get_flutterwave_virtual_account(
-                client, trxn
+                client, trxn, *args, **kwargs
             )
         return response
 
@@ -109,7 +109,8 @@ class PaymentService(PaymentInterface):
 
     @classmethod
     def get_flutterwave_virtual_account(
-        cls, client: User, trxn: Transaction
+        cls, client: User, trxn: Transaction,
+        *args, **kwargs
     ) -> dict:
         """
         gets virtual account from paystack
@@ -119,17 +120,17 @@ class PaymentService(PaymentInterface):
             logger.error(f"couldn't retrieve client customer info.\n got response: {client_customer_info}")
             return {}
 
-        trxn_virtual_acc_rec = trxn.meta.get("virtual_account") or {}
-        idempotency_key = trxn_virtual_acc_rec.get("txn_idempotency_key") or generate_unique_id()
-        trace_id = trxn_virtual_acc_rec.get("txn_trace_id") or generate_unique_id(30)
+        idempotency_key = generate_unique_id()
+        trace_id = generate_unique_id(30)
         endpoint = "/virtual-accounts"
         headers = {
             "X-Idempotency-Key": idempotency_key,
             "X-Trace-Id": trace_id
         }
+        reference = kwargs.get("reference") or trxn.txn_ref
         payload = {
             "customer_id": client_customer_info.get("id"),
-            "reference": trxn.txn_ref,
+            "reference": reference,
             "expiry": 60,
             "amount": trxn.amount,
             "currency": trxn.currency,
@@ -165,7 +166,8 @@ class PaymentService(PaymentInterface):
             "provider": cls.provider,
             "info": account_data,
             "txn_idempotency_key": idempotency_key,
-            "txn_trace_id": trace_id
+            "txn_trace_id": trace_id,
+            "transfer_status": "pending"
         }
         trxn.save()
         return response
