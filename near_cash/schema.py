@@ -11,6 +11,7 @@ from apps.core.schema.mutations.client_mutations import Mutation as ClientMutati
 from apps.core.schema.queries.business_queries import Query as BusinessQuery
 from apps.notification.schema.queries.notification_queries import Query as NotificationQuery
 from apps.notification.schema.mutations.notifications import Mutation as NotificationMutation
+from apps.payment.schema.mutations.payment_mutation import Mutation as PaymentMutation
 
 from utils.helpers.types import PaginationType
 
@@ -26,6 +27,7 @@ class RootQuery(
     """
     pagination = graphene.Field(PaginationType)
 
+    @login_required
     def resolve_pagination(self, info):
         return info.context.pagination
 
@@ -37,6 +39,7 @@ class RootMutation(
     BusinessMutation,
     ClientMutation,
     NotificationMutation,
+    PaymentMutation,
     ObjectType
 ):
     """
