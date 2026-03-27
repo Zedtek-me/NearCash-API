@@ -83,19 +83,15 @@ def write_token_to_file(
 
 def _should_refresh_token(
     existing_token: str | None = None,
-    db_token_info: PaymentPlatformToken | None = None
+    db_token_info: PaymentPlatformToken | None = None,
+    check_from_db: bool = True
 ) -> bool:
 
-    if not existing_token:
+    if not check_from_db and not existing_token:
         return True
 
     if not db_token_info:
         return True
-
-    current_token_expiry = (
-        db_token_info.expires_in
-        or timezone.timedelta(minutes=10)
-    )
 
     last_update_dt = db_token_info.last_updated
     time_left_to_refresh = last_update_dt - timezone.now()
