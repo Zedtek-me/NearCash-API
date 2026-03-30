@@ -5,8 +5,6 @@ from rest_framework.request import Request
 
 from django.views.decorators.csrf import csrf_exempt
 
-from apps.payment.serializers import FlutterWaveHookSerializer
-
 from utils.helpers.logs import logger
 from utils.https.parsers import HttpPerser
 
@@ -28,11 +26,4 @@ class PaymentHookViewSet(ViewSet):
     @action(detail=False, methods=["post"], url_path="flutterwave")
     def handle_flutterwave_hook(self, request: Request):
         logger.debug(f"initial data from flutterwave event:::: {request.data}")
-        serializer = FlutterWaveHookSerializer(data=request.data)
-        if not serializer.is_valid(raise_exception=False):
-            logger.error(f"error during deserialization of flutter hook data::: {serializer.error_messages}")
-            return HttpPerser.error(
-                message="".join(serializer.error_messages)
-            )
-        data = serializer.validated_data
         return HttpPerser.success(data={"message": "event successfully received!"})
