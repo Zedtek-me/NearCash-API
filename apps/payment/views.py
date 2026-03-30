@@ -32,7 +32,7 @@ class PaymentHookViewSet(ViewSet):
         if not serializer.is_valid(raise_exception=False):
             logger.error(f"error during deserialization of flutter hook data::: {serializer.error_messages}")
             return HttpPerser.error(
-                message="".join(serializer.errors)
+                message="".join(serializer.error_messages)
             )
         data = serializer.validated_data
         return HttpPerser.success(data={"message": "event successfully received!"})
