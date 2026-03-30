@@ -4,6 +4,7 @@ from django.conf import settings
 
 import hmac
 import json
+from base64 import b64encode
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
@@ -18,27 +19,25 @@ class HookSignatureValid(BasePermission):
         flutterwave_signature = request.headers.get("flutterwave-signature")
         logger.debug(
             f"flutterwave signature from header here::::: {flutterwave_signature}\n"
+            f"request body with the body prop::: {request.body}"
         )
-        try:
-            logger.debug(f"request body with the body prop::: {request.body}")
-        except Exception as e:
-            logger.error(f"exception with req.body::: {e}")
         return self._verify_signature(
             flutterwave_signature, settings.HMAC_KEY,
-            request.data
+            request.body
         )
 
 
     def _verify_signature(
         self, signature: str, hash_key: str,
-        data: str | dict, digest: str = "SHA256"
+        byte_data: str | dict, digest: str = "SHA256"
     ) -> bool:
-        refined_data = self._refine_raw_data(data)
-        regenerated_hmac_hex = hmac.new(
+        refined_data = self._refine_raw_data(byte_data)
+        regenerated_hmac_digest = hmac.new(
             hash_key.encode(), refined_data, digestmod=digest
-        ).hexdigest()
-        logger.debug(f"regenerated hmac hex::::: {regenerated_hmac_hex}")
-        return regenerated_hmac_hex == signature
+        ).digest()
+        encoded_digest = b64encode(regenerated_hmac_digest)
+        logger.debug(f"regenerated hmac hex::::: {regenerated_hmac_digest}\n b64 encoded digest:: {encoded_digest}")
+        return encoded_digest == signature
 
 
     def _refine_raw_data(
