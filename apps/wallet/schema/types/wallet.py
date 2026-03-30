@@ -35,7 +35,7 @@ class TransactionType(DjangoObjectType):
         virtual_account_info = self.meta.get("virtual_account", {})
         transfer_status = virtual_account_info.get("transfer_status", "")
         trxn_status = self.status
-        return self.status == IN_PROGRESS and self.transfer_mode == BANK_TRANSFER and transfer_status != "success"
+        return trxn_status == IN_PROGRESS and self.transfer_mode == BANK_TRANSFER and transfer_status != "success"
 
 
 class AssetInputType(graphene.InputObjectType):

@@ -26,9 +26,9 @@ class PaymentAsyncOperations:
                     PaymentAsyncOperations._process_charge_event(source, event)
                 case _:
                     logger.error(f"No handler for event: `{event_type}` yet!")
-        transaction.on_commit(
-            lambda: True
-        )
+            transaction.on_commit(
+                lambda: True
+            )
 
     @staticmethod
     def _process_charge_event(
@@ -110,6 +110,7 @@ class PaymentAsyncOperations:
             )
         trxn_curr = trxn.currency
         trxn_amount = trxn.amount
+        source = (source or "").lower()
         # update according to payment provider
         match source:
             case "flutterwave":
@@ -126,6 +127,11 @@ class PaymentAsyncOperations:
                     )
                     trxn.save()
                     return False
+                # if all conditions pass, update transfer status
+                virtual_account_info = trxn.meta["virtual_account"] or {}
+                virtual_account_info.update(transfer_status="success")
+                trxn.meta["virtual_account"] = virtual_account_info
+                trxn.save()
             case _:
                 logger.debug(f"unable to handle transaction source:: {source} :: for now.")
         return True
