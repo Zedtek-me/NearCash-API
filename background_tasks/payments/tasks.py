@@ -50,6 +50,7 @@ class PaymentAsyncOperations:
         trxn_ref = charge_data.get("reference", "")
         amount: float = charge_data.get("amount", 0.0)
         currency: str = charge_data.get("currency", "")
+        status: str = charge_data.get("status", "")
         search_filter = Q()
         if source.lower() == "flutterwave":
             search_filter = (
@@ -71,7 +72,8 @@ class PaymentAsyncOperations:
         if payment_method.get("type", "").lower() == "bank_transfer":
             payment_method.update({
                 "amount": amount,
-                "currency": currency
+                "currency": currency,
+                "status": status
             })
             successfully_processed = PaymentAsyncOperations._process_bank_transfer_charge(
                 source, trxn, payment_method
@@ -86,7 +88,7 @@ class PaymentAsyncOperations:
         PaymentAsyncOperations._notify_client_on_transfer_status(
             trxn, status_msg_type="Transfer Confirmed"
         )
-        PaymentAsyncOperations._notify_client_on_transfer_status(
+        PaymentAsyncOperations._notify_vendor_on_transfer_status(
             trxn, status_msg_type="Transfer Confirmed"
         )
         # TODO: generate a code for the client when transaction is confirmed successful.
