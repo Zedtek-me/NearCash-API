@@ -21,8 +21,8 @@ class PaymentHookViewSet(ViewSet):
         method: str = (request.method and request.method.lower()) or ""
         endpoint_called: str = action_map.get(method, "")
         if endpoint_called == "handle_flutterwave_hook":
-            return [ HookSignatureValid ]
-        return [ AllowAny ]
+            return [ HookSignatureValid() ]
+        return [ AllowAny() ]
 
     @csrf_exempt
     @action(detail=False, methods=["post"], url_path="flutterwave")
