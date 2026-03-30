@@ -41,6 +41,7 @@ class PaymentAsyncOperations:
         from apps.payment.models import PaymentPlatformEvent
         from utils.wallet_utils.transactions import TransactionUtil
 
+        logger.debug(f"event data passed into webhook:::: {event_data}")
         db_event = PaymentPlatformEvent(
             source=source, event=event_data
         )
@@ -58,7 +59,7 @@ class PaymentAsyncOperations:
                 )
             )
         trxn = TransactionUtil.get_transaction(search_filter=search_filter)
-        logger.debug(f"search filter used for trxn lookup:: {search_filter}\ntransaction found for event::::: {trxn}")
+        logger.debug(f"trxn_ref from event data:: {trxn_ref}\nsearch filter used for trxn lookup:: {search_filter}\ntransaction found for event::::: {trxn}")
         if not trxn:
             raise CustomException(
                 message="couldn't find a transaction for this event!"
