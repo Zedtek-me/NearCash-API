@@ -366,11 +366,13 @@ class NotificationUtil:
     ) -> dict:
         default_created_time, default_expiry = get_two_formatted_datetime(5)
         trxn_info.update({
-            "note": "Unable to generate virtual account at the moment. Try again in 5 seconds",
-            "amount": "Unavailable", "status": "unavailable",
-            "currency": "NGN", "reference": "Unavailable",
-            "created_datetime": default_created_time,
-            "account_bank_name": "Unavailable",
-            "account_expiration_datetime": default_expiry
+            "account_info": {
+                "note": "Unable to generate virtual account at the moment. Try again in 5 seconds",
+                "amount": 0.0, "status": "unavailable",
+                "currency": "NGN", "reference": "Unavailable",
+                "created_datetime": default_created_time,
+                "account_bank_name": "Unavailable",
+                "account_expiration_datetime": default_expiry
+            }
         })
         return trxn_info
