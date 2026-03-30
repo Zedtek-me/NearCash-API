@@ -1,6 +1,7 @@
 from celery import shared_task
 
 from django.db.models import Q
+from django.db import transaction
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
@@ -19,12 +20,15 @@ class PaymentAsyncOperations:
         then handle all other operations around the event processing
         """
         event_type = event.get("type")
-        match event_type:
-            case "charge.completed":
-                PaymentAsyncOperations._process_charge_event(source, event)
-            case _:
-                logger.error(f"No handler for event: `{event_type}` yet!")
-        return True
+        with transaction.atomic():
+            match event_type:
+                case "charge.completed":
+                    PaymentAsyncOperations._process_charge_event(source, event)
+                case _:
+                    logger.error(f"No handler for event: `{event_type}` yet!")
+        transaction.on_commit(
+            lambda: True
+        )
 
     @staticmethod
     def _process_charge_event(
@@ -54,7 +58,11 @@ class PaymentAsyncOperations:
                 )
             )
         trxn = TransactionUtil.get_transaction(search_filter=search_filter)
-        logger.debug(f"transaction found for event::::: {trxn}")
+        logger.debug(f"search filter used for trxn lookup:: {search_filter}\ntransaction found for event::::: {trxn}")
+        if not trxn:
+            raise CustomException(
+                message="couldn't find a transaction for this event!"
+            )
         db_event.transaction = trxn
         db_event.save()
 
