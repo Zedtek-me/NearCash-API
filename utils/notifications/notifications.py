@@ -22,6 +22,7 @@ from apps.payment.services import PaymentService
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
+from utils.helpers.general import get_two_formatted_datetime
 from utils.wallet_utils.transactions import TransactionUtil
 
 
@@ -215,7 +216,11 @@ class NotificationUtil:
             )
             if txn_status == "Approved" and mode_of_transfer == BANK_TRANSFER:
                 #generate virtual account for the client to pay into
-                txn_info = TransactionUtil.update_trxn_info_with_account_details(txn, txn_info, client)
+                try:
+                    txn_info = TransactionUtil.update_trxn_info_with_account_details(txn, txn_info, client)
+                except Exception as e:
+                    logger.exception(f"exception occured when generating virtual account: {e}")
+                    cls._populate_trxn_info_with_default_account_details(txn_info)
 
             msg_type = custom_msg_type or (
                         "New Transaction Interest" if txn_status == "Initiated"
@@ -353,3 +358,19 @@ class NotificationUtil:
                     "message": msg_format
                 }
             )
+
+
+    @classmethod
+    def _populate_trxn_info_with_default_account_details(
+        cls, trxn_info: dict
+    ) -> dict:
+        default_created_time, default_expiry = get_two_formatted_datetime(5)
+        trxn_info.update({
+            "note": "Unable to generate virtual account at the moment. Try again in 5 seconds",
+            "amount": "Unavailable", "status": "unavailable",
+            "currency": "NGN", "reference": "Unavailable",
+            "created_datetime": default_created_time,
+            "account_bank_name": "Unavailable",
+            "account_expiration_datetime": default_expiry
+        })
+        return trxn_info
