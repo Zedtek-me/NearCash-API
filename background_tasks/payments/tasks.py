@@ -46,8 +46,8 @@ class PaymentAsyncOperations:
             source=source, event=event_data
         )
         charge_data: dict = event_data.get("data", {})
-        payment_method: dict = event_data.get("payment_method", {})
-        trxn_ref = event_data.get("reference", "")
+        payment_method: dict = charge_data.get("payment_method", {})
+        trxn_ref = charge_data.get("reference", "")
         amount: float = charge_data.get("amount", 0.0)
         currency: str = charge_data.get("currency", "")
         search_filter = Q()

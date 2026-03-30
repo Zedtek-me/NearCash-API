@@ -364,15 +364,5 @@ class NotificationUtil:
     def _populate_trxn_info_with_default_account_details(
         cls, trxn_info: dict
     ) -> dict:
-        default_created_time, default_expiry = get_two_formatted_datetime(5)
-        trxn_info.update({
-            "account_info": {
-                "note": "Unable to generate virtual account at the moment. Try again in 5 seconds",
-                "amount": 0.0, "status": "unavailable",
-                "currency": "NGN", "reference": "Unavailable",
-                "created_datetime": default_created_time,
-                "account_bank_name": "Unavailable",
-                "account_expiration_datetime": default_expiry
-            }
-        })
+        trxn_info = TransactionUtil.populate_trxn_info_with_default_account_detail(trxn_info)
         return trxn_info
