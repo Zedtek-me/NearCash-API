@@ -18,7 +18,6 @@ class HookSignatureValid(BasePermission):
         flutterwave_signature = request.headers.get("flutterwave-signature")
         logger.debug(
             f"flutterwave signature from header here::::: {flutterwave_signature}\n"
-            f"raw body from request::: {request.data}"
         )
         try:
             logger.debug(f"request body with the body prop::: {request.body}")
