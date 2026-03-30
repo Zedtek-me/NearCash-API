@@ -152,7 +152,7 @@ class PaymentAsyncOperations:
             )
 
         if custom_msg_type == "Transfer Confirmed" and for_client:
-            confirmation_provider = trxn.meta.ge("virtual_account", {})\
+            confirmation_provider = trxn.meta.get("virtual_account", {})\
                 .get("provider", "flutterwave")
             confirmed_amount = trxn.amount
             custom_body = f"Your Transfer of {confirmed_amount} has been confirmed by NearCash on {confirmation_provider}!"
