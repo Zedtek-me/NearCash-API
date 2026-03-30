@@ -213,6 +213,7 @@ FLUTTERWAVE_OAUTH_URL = config(
     default="https://idp.flutterwave.com/realms/flutterwave/protocol/openid-connect/token"
 )
 FLUTTERWAVE_ACCESS_TOKEN = config("FLUTTERWAVE_ACCESS_TOKEN", cast=str)
+FLUTTERWAVE_DYNAMIC_VIRTUAL_ACCOUNT_EXPIRY = config("FLUTTERWAVE_DYNAMIC_VIRTUAL_ACCOUNT_EXPIRY", cast=int, default=3600)
 DEFAULT_HTTP_TIMEOUT = config("DEFAULT_HTTP_TIMEOUT", cast=int, default=10000)
 
 DOTENV_FILENAME = config("DOTENV_FILENAME", cast=str)
@@ -252,3 +253,5 @@ EMAIL_USE_TLS = (ENVIRONMENT in ['production', 'staging'])
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", cast=str, default="support@nearcash.com")
 GENERAL_NOTIFICATION_GROUP_NAME = "nearcash_notifications"
 OPPORTUNISTIC_VENDOR_GROUP = "transaction_opportunity"
+
+HMAC_KEY = config("HMAC_KEY", cast=str)

@@ -125,13 +125,14 @@ class PaymentService(PaymentInterface):
         endpoint = "/virtual-accounts"
         headers = {
             "X-Idempotency-Key": idempotency_key,
-            "X-Trace-Id": trace_id
+            "X-Trace-Id": trace_id,
+            "X-Scenario-Key": "issuer:approved"
         }
         reference = kwargs.get("reference") or trxn.txn_ref
         payload = {
             "customer_id": client_customer_info.get("id"),
             "reference": reference,
-            "expiry": 60,
+            "expiry": settings.FLUTTERWAVE_DYNAMIC_VIRTUAL_ACCOUNT_EXPIRY,
             "amount": trxn.amount,
             "currency": trxn.currency,
             "account_type": "dynamic",

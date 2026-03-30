@@ -93,6 +93,19 @@ def _should_refresh_token(
     if not db_token_info:
         return True
 
+    # NOTE: There's a logical bug here
+    # Ideally, Flutterwave expires its access token every 10 mins.
+    # what I should have done could be: 1. Get the expiry date of
+    # the current token (which is expected to be a future time)
+    # 2. Subtract the current time from the expiry (expiry - timezone.now())
+    # 3. Now, if the remaining time is less than or equal to 1 min, then you know it's time to refresh; hence, return True
+    # However though, `expiry` is a duration field which returns a timedelta object, while timezone.now() returns a datetime object.
+    # Two options to resolve this to enable arithmetic calculations:
+    # a. Change `expiry` from DurationField to a DateTimeField such that,
+    # when I get the access token expiry from flutter (which will be in seconds), I can construct a new datetime.datetime() object at tha moment, but replace its seconds with what flutterwave gave.
+    # which would then allow a proper arithmetic implementation between `expiry` and `timezone.now()`.
+    # b. The second option here is to find a way to add `expiry` to a `datetime.object` before performing the subtraction on the current timezone.now() object.
+    # Option a might be the most feasible, actually.
     last_update_dt = db_token_info.last_updated
     time_left_to_refresh = last_update_dt - timezone.now()
     if time_left_to_refresh <= timezone.timedelta(seconds=1):
