@@ -35,6 +35,10 @@ class PaymentPlatformToken(BaseModel):
 
 
 class PaymentPlatformEvent(BaseModel):
+    event_type = models.CharField(
+        max_length=100, null=True, blank=True,
+        help_text="Name of the event from the platform that sends it."
+    )
     source = models.CharField(
         choices=[
             ("FLUTTERWAVE", "FLUTTERWAVE"),

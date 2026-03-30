@@ -19,14 +19,14 @@ class PaymentPlatformTokenAdmin(admin.ModelAdmin):
 @admin.register(PaymentPlatformEvent)
 class PaymentPlatformEventAdmin(admin.ModelAdmin):
     list_display = [
-        "id", "source", "transaction"
+        "id", "event_type", "source", "transaction"
     ]
     list_filter = [
-        "source"
+        "source", "event_type"
     ]
     search_fields = [
-        "id", "source__icontains"
+        "id", "event_type__icontains", "source__icontains"
     ]
     fields = [
-        "source", "event", "transaction"
+        "event_type", "source", "event", "transaction"
     ]

@@ -43,7 +43,8 @@ class PaymentAsyncOperations:
 
         logger.debug(f"event data passed into webhook:::: {event_data}")
         db_event = PaymentPlatformEvent(
-            source=source, event=event_data
+            source=source, event=event_data,
+            event_type=event_data.get("type", "charge.completed")
         )
         charge_data: dict = event_data.get("data", {})
         payment_method: dict = charge_data.get("payment_method", {})
