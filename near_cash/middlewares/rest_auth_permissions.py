@@ -35,7 +35,7 @@ class HookSignatureValid(BasePermission):
         regenerated_hmac_digest = hmac.new(
             hash_key.encode(), refined_data, digestmod=digest
         ).digest()
-        encoded_digest = b64encode(regenerated_hmac_digest)
+        encoded_digest = b64encode(regenerated_hmac_digest).decode()
         logger.debug(f"regenerated hmac hex::::: {regenerated_hmac_digest}\n b64 encoded digest:: {encoded_digest}")
         return encoded_digest == signature
 
