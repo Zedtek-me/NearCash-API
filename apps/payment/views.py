@@ -29,7 +29,10 @@ class PaymentHookViewSet(ViewSet):
     def handle_flutterwave_hook(self, request: Request):
         logger.debug(f"initial data from flutterwave event:::: {request.data}")
         serializer = FlutterWaveHookSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid(raise_exception=False):
+            return HttpPerser.error(
+                message="".join(serializer.errors)
+            )
         data = serializer.validated_data
         logger.debug(f"webhook data from flutterwave::::: {data}")
         return HttpPerser.success(data={"message": "event successfully received!"})

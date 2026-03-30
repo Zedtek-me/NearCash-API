@@ -19,7 +19,6 @@ class HookSignatureValid(BasePermission):
         flutterwave_signature = request.headers.get("flutterwave-signature")
         logger.debug(
             f"flutterwave signature from header here::::: {flutterwave_signature}\n"
-            f"request body with the body prop::: {request.body}"
         )
         return self._verify_signature(
             flutterwave_signature, settings.HMAC_KEY,
