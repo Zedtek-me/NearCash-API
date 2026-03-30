@@ -22,8 +22,9 @@ class BaseTask(Task):
 app = Celery(
     'near_cash', 
     include=[
-        "background_tasks.core.business",
-        "background_tasks.wallets",
+        "background_tasks.core.tasks",
+        "background_tasks.wallets.tasks",
+        "background_tasks.payments.tasks",
         "utils.notifications.notifications",
         "background_tasks.auths.flutterwave"
     ],

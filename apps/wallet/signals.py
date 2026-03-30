@@ -16,7 +16,7 @@ def optionally_return_liquidity(
     was cancelled; if so, it returns back its liquidity to the
     business availale liquidity
     """
-    from background_tasks.core.business import BusinessAsyncOperations
+    from background_tasks.core.tasks import BusinessAsyncOperations
 
     if updated and instance.status == CANCELLED and not instance.meta.get("liquidity_returned"):
         BusinessAsyncOperations.return_transaction_amount_to_vendor_available_liquidity(

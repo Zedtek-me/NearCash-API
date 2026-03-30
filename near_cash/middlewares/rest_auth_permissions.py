@@ -17,9 +17,6 @@ class HookSignatureValid(BasePermission):
         is valid based on my secret hash key
         """
         flutterwave_signature = request.headers.get("flutterwave-signature")
-        logger.debug(
-            f"flutterwave signature from header here::::: {flutterwave_signature}\n"
-        )
         return self._verify_signature(
             flutterwave_signature, settings.HMAC_KEY,
             request.body
@@ -35,7 +32,7 @@ class HookSignatureValid(BasePermission):
             hash_key.encode(), refined_data, digestmod=digest
         ).digest()
         encoded_digest = b64encode(regenerated_hmac_digest).decode()
-        logger.debug(f"regenerated hmac hex::::: {regenerated_hmac_digest}\n b64 encoded digest:: {encoded_digest}")
+        logger.debug(f"regenerated hmac_digest::::: {regenerated_hmac_digest}\n b64 encoded digest:: {encoded_digest}")
         return encoded_digest == signature
 
 

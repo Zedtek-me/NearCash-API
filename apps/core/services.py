@@ -172,7 +172,7 @@ class ClientService:
         """initiates a transaction interest by a client to a vendor"""
         from utils.wallet_utils.transactions import TransactionUtil
         from utils.notifications.notifications import NotificationUtil
-        from background_tasks.core.business import BusinessAsyncOperations
+        from background_tasks.core.tasks import BusinessAsyncOperations
 
 
         [

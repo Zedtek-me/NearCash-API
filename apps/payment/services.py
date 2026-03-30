@@ -12,7 +12,6 @@ from apps.wallet.models import Transaction
 from apps.payment.models import PaymentPlatformToken
 
 
-
 class PaymentService(PaymentInterface):
     PROVIDERS = {
         "flutterwave": {
@@ -168,7 +167,21 @@ class PaymentService(PaymentInterface):
             "info": account_data,
             "txn_idempotency_key": idempotency_key,
             "txn_trace_id": trace_id,
-            "transfer_status": "pending"
+            "transfer_status": "pending",
+            "flutter_reference": reference
         }
         trxn.save()
         return response
+
+    @classmethod
+    def process_flutterwave_event(
+        cls, data: dict
+    ):
+        """
+        processes an event from flutterwave
+        """
+        from background_tasks.payments.tasks import PaymentAsyncOperations
+
+        PaymentAsyncOperations.process_event.delay(
+            source="FLUTTERWAVE", event=data
+        )

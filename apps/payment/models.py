@@ -32,3 +32,25 @@ class PaymentPlatformToken(BaseModel):
     @classmethod
     def fetch_token_info(cls, platform: str):
         return cls.objects.filter(source__icontains=platform).first()
+
+
+class PaymentPlatformEvent(BaseModel):
+    source = models.CharField(
+        choices=[
+            ("FLUTTERWAVE", "FLUTTERWAVE"),
+            ("PAYSTACK", "PAYSTACK")
+        ], null=True, blank=True
+    )
+    event = models.JSONField(
+        default=dict, null=True
+    )
+    transaction = models.ForeignKey(
+        to="wallet.Transaction", on_delete=models.SET_NULL, null=True,
+        blank=True
+    )
+
+    class Meta(BaseModel.Meta):
+        ordering = ["-last_updated", "-date_created"]
+        verbose_name = "payment_platform_event"
+        verbose_name_plural = "payment_platform_events"
+        db_table = "payment_platform_event"

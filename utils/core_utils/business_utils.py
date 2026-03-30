@@ -36,7 +36,7 @@ from utils.notifications.notifications import NotificationUtil
 from utils.helpers.kwargs import KwargUtil
 
 from dtos.core_dtos.business_dtos import UpdateBusinessDto
-from background_tasks.core.business import BusinessAsyncOperations
+from background_tasks.core.tasks import BusinessAsyncOperations
 
 class BusinessUtil:
 

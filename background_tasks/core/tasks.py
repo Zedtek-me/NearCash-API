@@ -305,8 +305,6 @@ class BusinessAsyncOperations:
                 owner_businesses[owner].append(business)
 
             for owner, businesses in owner_businesses.items():
-                # Use the first business's distance for the notification body
-
                 trxn_opportunity_msg["txn_info"].update({
                     "vendor_name": owner.full_name,
                     "businesses": [
@@ -356,15 +354,6 @@ class BusinessAsyncOperations:
     ) -> list:
         return [item.get(key_to_check) for item in data if key_to_check in item]
 
-
-    @classmethod
-    def _get_data_whose_key_values_are_same(
-        cls, data: list[dict]
-    ) -> list[dict]:
-        owner_id_values = []
-        for item in data:
-            cls._get_values_from_keys()
-        return []
 
     @shared_task(
         bind=True, name="post-opportunity-acceptance-task"

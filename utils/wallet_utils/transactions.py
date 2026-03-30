@@ -51,7 +51,7 @@ class TransactionUtil:
         updates txn status and publish notification accordingly, if needed --
         depending on the status type.
         """
-        from background_tasks.core.business import BusinessAsyncOperations
+        from background_tasks.core.tasks import BusinessAsyncOperations
         from utils.notifications.notifications import NotificationUtil
 
         txn = cls.get_transaction(

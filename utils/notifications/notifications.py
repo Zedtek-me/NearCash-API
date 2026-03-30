@@ -184,9 +184,11 @@ class NotificationUtil:
     @classmethod
     def send_socket_notification(
         cls, txn: Transaction, for_vendor_notif = True,
-        skip_record: bool = False
+        skip_record: bool = False,
+        custom_title: str | None = None, custom_body: str | None = None,
+        custom_msg_type: str | None = None
     ) -> bool:
-        from background_tasks.core.business import BusinessAsyncOperations
+        from background_tasks.core.tasks import BusinessAsyncOperations
 
         channel_layer = get_channel_layer()
         try:
@@ -208,11 +210,18 @@ class NotificationUtil:
             [
                 business_id, user_id, title, body
             ] = cls._get_notification_title_and_body(
-                txn, client, for_vendor_notif, business
+                txn, client, for_vendor_notif, business,
+                custom_title=custom_title, custom_body=custom_body
             )
             if txn_status == "Approved" and mode_of_transfer == BANK_TRANSFER:
                 #generate virtual account for the client to pay into
                 txn_info = TransactionUtil.update_trxn_info_with_account_details(txn, txn_info, client)
+
+            msg_type = custom_msg_type or (
+                        "New Transaction Interest" if txn_status == "Initiated"
+                        and for_vendor_notif
+                        else f"Transaction {txn_status}!"
+                    )
             if not skip_record:
                 cls.create_notification_async.delay(
                     title=title,
@@ -224,10 +233,7 @@ class NotificationUtil:
             socket_notification_data = {
                 "type": "send.notification",
                 "message": {
-                    "message_type": (
-                        "New Transaction Interest" if txn_status == "Initiated" and for_vendor_notif
-                        else f"Transaction {txn_status}!"
-                    ),
+                    "message_type": msg_type,
                     "txn_info": txn_info
                 }
             }
@@ -276,7 +282,8 @@ class NotificationUtil:
     @classmethod
     def _get_notification_title_and_body(
         cls, txn: Transaction, client: User, for_vendor_notif: bool = True,
-        business: Business | None = None
+        business: Business | None = None, custom_title: str | None = None,
+        custom_body: str | None = None
     ) -> list[str | int | None]:
         """
         formarts notification information for db recording
@@ -308,6 +315,10 @@ class NotificationUtil:
                 f"{business.name} has {txn_status} your transaction of amount "
                 f"{txn.amount}{txn.currency}."
             )
+        if custom_title:
+            title = custom_title
+        if custom_body:
+            body = custom_body
         return [
             business_id, user_id, title, body
         ]
