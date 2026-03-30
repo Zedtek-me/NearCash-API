@@ -16,7 +16,14 @@ class HookSignatureValid(BasePermission):
         is valid based on my secret hash key
         """
         flutterwave_signature = request.headers.get("flutterwave-signature")
-        logger.debug(f"flutterwave signature from header here::::: {flutterwave_signature}")
+        logger.debug(
+            f"flutterwave signature from header here::::: {flutterwave_signature}\n"
+            f"raw body from request::: {request.data}"
+        )
+        try:
+            logger.debug(f"request body with the body prop::: {request.body}")
+        except Exception as e:
+            logger.error(f"exception with req.body::: {e}")
         return self._verify_signature(
             flutterwave_signature, settings.HMAC_KEY,
             request.data
