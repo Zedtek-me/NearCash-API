@@ -51,7 +51,7 @@ class BusinessAsyncOperations:
             txn.business, txn
         )
         # txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(txn)
-        # email_data: EmailArgsDto = {
+        # email_data: dict = {
         #     "subject": "New Transaction Interest",
         #     "body": "new_txn_interest.html",
         #     "recipients": [vendor.email],
@@ -130,19 +130,19 @@ class BusinessAsyncOperations:
         txn = TransactionUtil.get_transaction(**{"id": txn_id})
         if not txn:
             raise CustomException(
-                "could not find a transaction with id: %"%txn_id
+                "could not find a transaction with id: %s"%txn_id
             )
-        txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
-            txn, for_vendor=False
-        )
+        # txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
+        #     txn, for_vendor=False
+        # )
 
         NotificationUtil.send_socket_notification(txn, for_vendor_notif=False)
-        email_data: EmailArgsDto = {
-            "subject": "Transaction is being processed!",
-            "body": "txn_status_update.html",
-            "recipients": [txn.client.email],
-            "context": txn_info
-        }
+        # email_data: dict = {
+        #     "subject": "Transaction is being processed!",
+        #     "body": "txn_status_update.html",
+        #     "recipients": [txn.client.email],
+        #     "context": txn_info
+        # }
         # EmailService().send_email(**email_data, raw=False)
         return True
 
