@@ -1,4 +1,7 @@
 import uuid
+import random
+import string
+
 from django.utils import timezone
 
 def generate_unique_id(count: int = 0):
@@ -22,3 +25,14 @@ def get_two_formatted_datetime(difference_in_sec: int = 8) -> tuple:
     return (
             strigified_now, stringified_expiry
         )
+
+
+def generate_random_codes(count: int = 4) -> str:
+    """
+    random number generator
+    """
+    return "".join(
+        random.choices(
+            string.digits, k=count
+        )
+    )

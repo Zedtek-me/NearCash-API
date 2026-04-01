@@ -4,9 +4,11 @@ from django.db.models import Q
 
 from apps.wallet.models import Transaction
 from apps.auths.models import User
+from apps.notification.email.app_emails import EmailService
 
 from utils.helpers.exception import CustomException
 from utils.helpers.logs import logger
+from utils.helpers.general import generate_random_codes
 
 from apps.wallet.constants import (
     IN_PROGRESS, CANCELLED,
@@ -142,3 +144,30 @@ class TransactionUtil:
             }
         })
         return trxn_info
+
+
+    @classmethod
+    def generate_and_send_confirmation_code(
+        cls, trxn: Transaction, for_vendor: bool = False
+    ) -> None:
+        """
+        generates and send confirmation code to the
+        appropriate user
+        """
+        code = generate_random_codes()
+        client: User = trxn.client
+        vendor: User = trxn.vendor
+        user_type = "client" if not for_vendor else "vendor"
+        recipients = [ client.email if not for_vendor else vendor.email ]
+        context = {
+            "confirmation_code": code,
+            "user_type":user_type,
+            "user_fullname": client.full_name if not for_vendor else vendor.full_name
+        }
+        EmailService().send_mail_async.delay(**{
+            "subject": "Transaction Confirmation Code",
+            "body": "confirmation_code.html",
+            "recipients": recipients,
+            "context": context
+        })
+        # TODO: also send confirmation code via sms

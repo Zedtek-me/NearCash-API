@@ -7,6 +7,7 @@ from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
 
 from apps.wallet.models import Transaction
+from apps.auths.models import User
 
 
 
@@ -92,7 +93,9 @@ class PaymentAsyncOperations:
         PaymentAsyncOperations._notify_vendor_on_transfer_status(
             trxn, status_msg_type="Transfer Confirmed"
         )
-        # TODO: generate a code for the client when transaction is confirmed successful.
+        PaymentAsyncOperations._send_confirmation_code_to_user(
+            trxn=trxn, for_vendor=False
+        )
         return True
 
 
@@ -219,3 +222,17 @@ class PaymentAsyncOperations:
             custom_title=title,
             custom_msg_type=msg_type
         )
+
+
+    @staticmethod
+    def _send_confirmation_code_to_user(
+        trxn: Transaction, for_vendor: bool = False
+    ) -> bool:
+        """
+        uses the TransactionUtil class to generate and send confirmation code to
+        either the client or the vendor
+        """
+        from utils.wallet_utils.transactions import TransactionUtil
+
+        TransactionUtil.generate_and_send_confirmation_code(trxn, for_vendor)
+        return True
