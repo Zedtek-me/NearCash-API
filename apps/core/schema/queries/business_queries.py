@@ -39,6 +39,7 @@ class Query(graphene.ObjectType):
     businesses_around_me = graphene.List(
         BusinessType, current_lat=graphene.Float(required=True),
         current_long=graphene.Float(required=True),
+        vendor_type=graphene.String(),
     )
 
     routes = graphene.Field(
@@ -130,14 +131,19 @@ class Query(graphene.ObjectType):
     def resolve_businesses_around_me(self, info, **kwargs) -> list:
         """
         Returns a list of businesses around the user's current location.
+        Accepts an optional vendor_type ("LOCAL" or "FX") to filter by currency type.
         """
+        user = info.context.user
         current_lat = kwargs.get("current_lat")
         current_long = kwargs.get("current_long")
 
         if not current_lat or not current_long:
             raise ValueError("Current latitude and longitude must be provided.")
 
-        businesses = BusinessUtil.get_nearby_businesses(current_lat, current_long)
+        businesses = BusinessUtil.get_nearby_businesses(
+            user, current_lat, current_long,
+            vendor_type=kwargs.get("vendor_type")
+        )
         paginated_businesses = PaginationUtil.paginate(
             businesses, kwargs.get("page_number", 1), kwargs.get("page_count", 10)
         )

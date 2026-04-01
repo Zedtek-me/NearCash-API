@@ -22,7 +22,7 @@ from apps.core.services import ClientService
 from apps.core.schema.types.client_types import DelayedTransactionResponseInputType
 from apps.auths.models import User
 
-from apps.core.constants import LOCATION_SERVICES
+from apps.core.constants import LOCATION_SERVICES, COUNTRY_CURRENCY_MAP
 from apps.wallet.models import Transaction, TransactionOpportunity
 from apps.wallet.constants import FULFILLED, CANCELLED, IN_PROGRESS, INITIATED
 
@@ -47,6 +47,7 @@ class BusinessUtil:
         """creates a vendor business"""
 
         country = data.get("country", "").title()
+        business_type = data.get("business_type", "").title()
         # TODO: use a mapping of countries and their currencies plus country code
         # in order to update currency, in case none is provided
         if not user.businesses.exists():
@@ -55,6 +56,9 @@ class BusinessUtil:
         country_code = "ng"
         if country == "Nigeria":
             business.currency = "NGN"
+        if business_type and business_type != "Local":
+            # it's an FX business
+            business.currency = "FXB"
         business.save()
         google_service = LOCATION_SERVICES.get("google")
         coordinates = GeolocationUtils(google_service).get_coordinate(
@@ -74,9 +78,20 @@ class BusinessUtil:
 
     @classmethod
     def get_nearby_businesses(
-        cls, current_lat: float, current_long: float, radius: int = 3000
+        cls, user: User, current_lat: float, current_long: float, radius: int = 3000,
+        **kwargs
     ) -> QuerySet:
         """returns all the businesses that are within a radius of the current location"""
+
+        local_currency = None
+        vendor_type = kwargs.get('vendor_type')
+        if vendor_type:
+            try:
+                country = (user.profile.country or "").lower()
+                local_currency = cls._get_local_currency(country)
+            except Exception as e:
+                logger.exception(f"error fetching local currency:: {e}")
+
         point = Point(current_long, current_lat, srid=4326)
         businesses_in_defined_km = Business.objects.none()
         businesses_away_from_user = Business.objects.annotate(distance=Geodistance("geo_location", point))
@@ -107,6 +122,13 @@ class BusinessUtil:
         )
         # order by liquidity availability first, then distance
         businesses = businesses.order_by("-available_liquidity").order_by("distance")
+        if vendor_type and local_currency:
+            if vendor_type.upper() == "LOCAL":
+                businesses = businesses.filter(currency=local_currency)
+            elif vendor_type.upper() == "FX":
+                businesses = businesses.exclude(currency=local_currency).filter(
+                    currency__isnull=False
+                ).exclude(currency="")
         return businesses
 
     @classmethod
@@ -720,3 +742,8 @@ class BusinessUtil:
             lambda: BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay(trxn_id=trxn.id)
         )
         return True
+
+
+    @classmethod
+    def _get_local_currency(cls, country: str) -> str:
+        return COUNTRY_CURRENCY_MAP.get(country.lower().strip(), "NGN")

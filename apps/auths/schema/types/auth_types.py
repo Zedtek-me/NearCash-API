@@ -67,6 +67,7 @@ class UpdateUserInputType(graphene.InputObjectType):
     remittance_bank_code = graphene.String(required=False)
     remittance_bank_name = graphene.String(required=False)
     remittance_account_number = graphene.String(required=False)
+    country = graphene.String(required=False)
 
     # business data
     business_data = CreateBusinessInputType(required=False)

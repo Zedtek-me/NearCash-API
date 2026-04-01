@@ -26,6 +26,7 @@ class UserUtil:
         remittance_bank_code = data.pop("remittance_bank_code", None)
         remittance_bank_name = data.pop("remittance_bank_name", None)
         remittance_account_number = data.pop("remittance_account_number", None)
+        country = data.pop("country", None)
         for key, value in data.items():
             if hasattr(user, key) and value is not None:
                 setattr(user, key, value)
@@ -39,7 +40,8 @@ class UserUtil:
             remittance_bank_name=remittance_bank_name,
             remittance_bank_code=remittance_bank_code,
             phone_number=phone_number,
-            profile_picture=picture_url
+            profile_picture=picture_url,
+            country=country
         )
         if user_type == "VENDOR" and first_time:
             business_data = data.pop("business_data", {})
