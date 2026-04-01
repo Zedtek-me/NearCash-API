@@ -70,4 +70,4 @@ class EmailService:
         """
         pushes email sending to the background
         """
-        self.send_email(**kwargs)
+        EmailService().send_email(**kwargs)
