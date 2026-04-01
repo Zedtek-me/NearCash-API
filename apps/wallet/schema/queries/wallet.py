@@ -124,7 +124,7 @@ class Query(graphene.ObjectType):
         if client_id:
             _filter["client__id"] = client_id
         if vendor_id:
-            _filter["vendor__id"] = vendor_id
+            _filter["business__id"] = vendor_id
         if date_from:
             _filter["date_created__date__gte"] = date_from
         if date_to:
