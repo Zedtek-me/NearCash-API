@@ -276,7 +276,10 @@ class BusinessAsyncOperations:
             longitude = cur_location and cur_location.location.x
 
         nearby_vendors = BusinessUtil.get_nearby_businesses(
-            current_lat=latitude, current_long=longitude
+            client,
+            current_lat=latitude,
+            current_long=longitude,
+            vendor_type=trxn.txn_type or "local"
         ).exclude(id=trxn.business.id).filter(
             available_liquidity__gte=trxn_amount
         )

@@ -12,7 +12,7 @@ class TransactionAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'txn_ref', 'wallet_id', 'amount', 'charge', 'extra_charge', 'business',
         'vendor', 'client', 'date_created', 'last_updated', 'status', 'collection_mode',
-        'transfer_mode', 'status', 'description', 'txn_location', 'discounted'
+        'transfer_mode', 'status', 'description', 'txn_location', 'txn_type', 'discounted'
     )
     search_fields = (
         'client__email', "client__username", "client__first_name", "client__last_name",

@@ -7,7 +7,8 @@ from utils.helpers.validators import Validator
 from .constants import (
     COLLECTION_MODES, IN_PROGRESS, CANCELLED, INITIATED,
     FULFILLED, MEET_UP, STORE_WALK_IN, TXN_STATUSES,
-    TRANSFER_MODES, BANK_TRANSFER
+    TRANSFER_MODES, BANK_TRANSFER, TRANSACTION_TYPES,
+    LOCAL
 )
 
 class FinancialAsset(BaseModel):
@@ -59,6 +60,9 @@ class Transaction(BaseModel):
     )
     transfer_mode = models.CharField(
         max_length=255, choices=TRANSFER_MODES, default=BANK_TRANSFER
+    )
+    txn_type = models.CharField(
+        max_length=100, choices=TRANSACTION_TYPES, default=LOCAL
     )
     txn_location = models.CharField(
         max_length=255, help_text="Location where the transaction is to be fulfilled"

@@ -9,14 +9,14 @@ from .models import (
 class BusinessAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'name', 'owner', 'date_created', 'last_updated', 'country', 'currency', 'status',
-        'parent_business_id', "available_liquidity", "is_primary", "is_online",
+        'parent_business_id', "available_liquidity", "is_primary", "is_online", "business_type"
     )
     search_fields = (
         'name__icontains', 'owner__email__iexact', 'owner__username__icontains',
         'owner__first_name__icontains', 'owner__last_name__icontains',
-        'country__icontains', 'currency'
+        'country__icontains', 'currency', "business_type__icontains"
     )
-    list_filter = ('date_created', 'last_updated')
+    list_filter = ('date_created', 'last_updated', "business_type")
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)

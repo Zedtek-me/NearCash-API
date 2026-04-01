@@ -236,6 +236,7 @@ class ClientService:
         from utils.wallet_utils.transactions import TransactionUtil
 
         txn_ref = TransactionUtil.generate_txn_reference()
+        business_type = asset.business.business_type
         txn_data = {
             "txn_ref": txn_ref,
             "client": client,
@@ -247,6 +248,7 @@ class ClientService:
             "business": asset.business,
             "collection_mode": data.get("collection_mode").value,
             "transfer_mode": data.get("transfer_mode").value,
+            "txn_type": business_type, #transaction type is automatically the type of business patronized.
             "extra_charge": kwargs.get("extra_charge", {}),
             "txn_location": data.get("collection_location"),
             "description": f"Withdrawal transaction initiated by {client.email}.",
