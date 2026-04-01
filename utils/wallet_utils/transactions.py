@@ -164,7 +164,7 @@ class TransactionUtil:
             "user_type":user_type,
             "user_fullname": client.full_name if not for_vendor else vendor.full_name
         }
-        EmailService().send_mail_async.delay(**{
+        EmailService.send_mail_async.delay(**{
             "subject": "Transaction Confirmation Code",
             "body": "confirmation_code.html",
             "recipients": recipients,

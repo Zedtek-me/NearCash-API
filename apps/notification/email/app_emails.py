@@ -65,7 +65,7 @@ class EmailService:
                 )
         return email
 
-    @shared_task(name="send.email")
+    @shared_task(bind=True, name="send.email")
     def send_mail_async(self, **kwargs: EmailArgsDto) -> None:
         """
         pushes email sending to the background
