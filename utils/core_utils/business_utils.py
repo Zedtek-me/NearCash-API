@@ -22,7 +22,10 @@ from apps.core.services import ClientService
 from apps.core.schema.types.client_types import DelayedTransactionResponseInputType
 from apps.auths.models import User
 
-from apps.core.constants import LOCATION_SERVICES, COUNTRY_CURRENCY_MAP
+from apps.core.constants import(
+     LOCATION_SERVICES, COUNTRY_CURRENCY_MAP,
+     MEET_UP, STORE_WALK_IN, MEET_UP_AND_STORE_WALK_IN
+)
 from apps.wallet.models import Transaction, TransactionOpportunity
 from apps.wallet.constants import FULFILLED, CANCELLED, IN_PROGRESS, INITIATED
 
@@ -83,8 +86,9 @@ class BusinessUtil:
     ) -> QuerySet:
         """returns all the businesses that are within a radius of the current location"""
 
-        local_currency = None
-        vendor_type = kwargs.get('vendor_type')
+        local_currency: str | None = None
+        vendor_type: str | None = kwargs.get('vendor_type')
+        collection_mode: str | None = kwargs.get('collection_mode')
         if vendor_type:
             try:
                 country = (user.profile.country or "").lower()
@@ -112,6 +116,8 @@ class BusinessUtil:
             businesses_in_defined_km = businesses_away_from_user.filter(
                 geo_location__distance_lte=(point, radius)
             )
+        # order by liquidity availability first, then distance
+        businesses = businesses_in_defined_km.order_by("-available_liquidity").order_by("distance")
         nearest_business = businesses_in_defined_km.values("distance").first() or {}
         businesses = businesses_in_defined_km.annotate(
                 nearest=Case(
@@ -120,8 +126,6 @@ class BusinessUtil:
                     output_field=BooleanField()
                 )
         )
-        # order by liquidity availability first, then distance
-        businesses = businesses.order_by("-available_liquidity").order_by("distance")
         if vendor_type and local_currency:
             if vendor_type.upper() == "LOCAL":
                 businesses = businesses.filter(currency=local_currency)
@@ -129,7 +133,32 @@ class BusinessUtil:
                 businesses = businesses.exclude(currency=local_currency).filter(
                     currency__isnull=False
                 ).exclude(currency="")
+
+        if collection_mode:
+            businesses = cls._filter_by_collection_mode(businesses, collection_mode)
         return businesses
+
+
+    @classmethod
+    def _filter_by_collection_mode(
+        cls, businesses: QuerySet, collection_mode: str
+    ) -> QuerySet:
+        if collection_mode.upper() == "MEET_UP":
+            businesses = businesses.filter(
+                businesstransactionpolicy__cash_collection_mode__in=[
+                    MEET_UP,
+                    MEET_UP_AND_STORE_WALK_IN
+                ]
+            )
+        elif collection_mode.upper() == "STORE_WALK_IN":
+            businesses = businesses.filter(
+                businesstransactionpolicy__cash_collection_mode__in=[
+                    STORE_WALK_IN,
+                    MEET_UP_AND_STORE_WALK_IN
+                ]
+            )
+        return businesses
+
 
     @classmethod
     def get_business(

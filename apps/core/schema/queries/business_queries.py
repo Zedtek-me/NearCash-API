@@ -39,7 +39,8 @@ class Query(graphene.ObjectType):
     businesses_around_me = graphene.List(
         BusinessType, current_lat=graphene.Float(required=True),
         current_long=graphene.Float(required=True),
-        vendor_type=graphene.String(),
+        vendor_type=graphene.String(), collection_mode=graphene.String(),
+        page_count=graphene.Int(), page_number=graphene.Int()
     )
 
     routes = graphene.Field(
@@ -142,10 +143,11 @@ class Query(graphene.ObjectType):
 
         businesses = BusinessUtil.get_nearby_businesses(
             user, current_lat, current_long,
-            vendor_type=kwargs.get("vendor_type")
+            vendor_type=kwargs.get("vendor_type"),
+            collection_mode=kwargs.get("collection_mode")
         )
         paginated_businesses = PaginationUtil.paginate(
-            businesses, kwargs.get("page_number", 1), kwargs.get("page_count", 10)
+            businesses, kwargs.get("page_number", 1), kwargs.get("page_count", 5)
         )
         info.context.pagination = paginated_businesses
         businesses = paginated_businesses.pop("items")
