@@ -236,7 +236,7 @@ class ClientService:
         from utils.wallet_utils.transactions import TransactionUtil
 
         txn_ref = TransactionUtil.generate_txn_reference()
-        business_type = asset.business.business_type
+        business_type = asset.business.business_type or "LOCAL"
         txn_data = {
             "txn_ref": txn_ref,
             "client": client,

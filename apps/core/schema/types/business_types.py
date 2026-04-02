@@ -38,6 +38,7 @@ class BusinessType(DjangoObjectType):
     location = PointFieldType()
     distance = graphene.Float()
     nearest = graphene.Boolean()
+    business_policy_for_current_user = graphene.Field(lambda: BusinessTransactionPolicyType)
 
     class Meta:
         model = Business
@@ -56,6 +57,16 @@ class BusinessType(DjangoObjectType):
         if hasattr(self, "nearest") and self.nearest is True:
             return self.nearest
         return False
+
+    def resolve_business_policy_for_current_user(self, info):
+        from utils.core_utils.business_utils import BusinessUtil
+
+        user = info.context.user
+        user_type: str = ((user.is_authenticated and user.meta.get("user_type")) or "").lower()
+        if user.is_authenticated and user_type == "client":
+            return BusinessUtil.fetch_business_txn_policy_for_current_client(user, self.id)
+        return None
+
 
 class BusinessClientCategoryType(DjangoObjectType):
 
