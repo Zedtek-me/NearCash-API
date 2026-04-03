@@ -130,6 +130,8 @@ class CreateTransactionPolicyInputType(graphene.InputObjectType):
     description = graphene.String()
     cash_collection_mode = CashCollectionModes()
     meet_up_charge = graphene.Float()
+    max_delivery_amount = graphene.Float()
+    max_delivery_distance = graphene.Float()
 
 
 class AnalyticsType(graphene.ObjectType):

@@ -55,6 +55,25 @@ class CoreUtil:
         )
 
     @classmethod
+    def update_business_txn_policy(
+        cls, user, policy_id: int | str, update_data: dict
+    ):
+        """updates a business transaction policy"""
+        policy = BusinessTransactionPolicy.objects.filter(
+            id=policy_id, business__owner=user
+        ).first()
+        if not policy:
+            raise CustomException("Invalid transaction policy ID or access denied!")
+        for key, value in update_data.items():
+            if hasattr(policy, key) and value is not None:
+                if key == "cash_collection_mode" and not isinstance(value, str):
+                    value = value.name
+                setattr(policy, key, value)
+        policy.save()
+        return policy
+
+
+    @classmethod
     def create_business_client_category(
         cls, business: Business, category_data: dict
     ) -> BusinessClientCategory:

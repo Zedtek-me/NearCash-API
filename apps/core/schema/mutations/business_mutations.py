@@ -157,6 +157,30 @@ class CreateTransactionPolicy(graphene.Mutation):
         )
 
 
+class UpdateTransactionPolicy(graphene.Mutation):
+
+    message = graphene.String()
+    policy = graphene.Field(BusinessTransactionPolicyType)
+
+    class Arguments:
+        policy_id = graphene.String(required=True)
+        data = CreateTransactionPolicyInputType(required=True)
+
+    @login_required
+    @transaction.atomic
+    def mutate(self, info, **kwargs):
+        user = info.context.user
+        policy_id: int | str = kwargs.get("policy_id") or ""
+        data: dict = kwargs.get("data") or {}
+        policy = CoreUtil.update_business_txn_policy(
+            user, policy_id, data
+        )
+        return UpdateTransactionPolicy(
+            message="Transaction policy successfully updated!",
+            policy=policy
+        )
+
+
 class AcceptTransactionOpportunity(graphene.Mutation):
     message = graphene.String()
 
@@ -185,6 +209,9 @@ class Mutation(graphene.ObjectType):
     )
     create_transaction_policy = CreateTransactionPolicy.Field(
         description="Creates a transaction policy for the given business"
+    )
+    update_transaction_policy = UpdateTransactionPolicy.Field(
+        description="Updates a transaction policy for the given business"
     )
     accept_transaction_opportunity = AcceptTransactionOpportunity.Field(
         description="Accepts a transaction opportunity broadcastd by the system"
