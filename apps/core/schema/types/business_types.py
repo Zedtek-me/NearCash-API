@@ -96,7 +96,8 @@ class CreateBusinessInputType(graphene.InputObjectType):
     country = graphene.String(required=False)
     parent_business_id = graphene.String(required=False)
     address = graphene.String(required=False)
-    business_type = graphene.String(required=True)
+    business_type = graphene.String(required=False)
+    available_liquidity = graphene.Float(required=False)
 
 class UpdateBusinessInputType(CreateBusinessInputType):
     is_online = graphene.Boolean(required=False)
