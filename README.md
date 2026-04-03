@@ -125,14 +125,7 @@ WebSocket Endpoint
 ws://localhost:8000/ws/notification/<user_id>/
 
 Environment Variables
-Variable	Description
-SECRET_KEY	Django secret key
-DATABASE_URL	PostgreSQL connection string
-GOOGLE_MAPS_API_KEY	For geocoding and distance
-GEOAPIFY_API_KEY	For geolocation enrichment
-CELERY_BROKER_URL	RabbitMQ connection string
-REDIS_URL	Django Channels layer
-JWT_SECRET	Token signing key
+chech {sample.env}
 
 License
 MIT © Zechariah Adebayo
