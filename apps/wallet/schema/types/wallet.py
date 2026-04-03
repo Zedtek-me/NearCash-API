@@ -13,6 +13,7 @@ from apps.core.schema.types.business_types import (
     PointFieldType, CashCollectionModes
 )
 
+from utils.helpers.types import PaginationType
 
 class FinancialAssetType(DjangoObjectType):
     class Meta:
@@ -36,6 +37,11 @@ class TransactionType(DjangoObjectType):
         transfer_status = virtual_account_info.get("transfer_status", "")
         trxn_status = self.status
         return trxn_status == IN_PROGRESS and self.transfer_mode == BANK_TRANSFER and transfer_status != "success"
+
+
+class TransactionListType(graphene.ObjectType):
+    transactions = graphene.List(TransactionType)
+    pagination = graphene.Field(PaginationType)
 
 
 class AssetInputType(graphene.InputObjectType):

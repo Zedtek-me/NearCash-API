@@ -6,6 +6,7 @@ from graphql_jwt.decorators import login_required
 
 from apps.wallet.schema.types.wallet import (
     FinancialAssetType, TransactionType, WalletType,
+    TransactionListType
 )
 
 from utils.helpers.exception import CustomException
@@ -27,8 +28,8 @@ class Query(graphene.ObjectType):
         page_count=graphene.Int(),
         page_number=graphene.Int()
     )
-    transactions = graphene.List(
-        TransactionType,
+    transactions = graphene.Field(
+        TransactionListType,
         wallet_id=graphene.String(),
         business_id=graphene.String(),
         id=graphene.String(),
@@ -89,7 +90,10 @@ class Query(graphene.ObjectType):
         paginated_txns = PaginationUtil.paginate(txns, page_number, page_count)
         txns = paginated_txns.pop("items", [])
         info.context.pagination = paginated_txns
-        return txns
+        return TransactionListType(
+            transactions=txns,
+            pagination=paginated_txns
+        )
 
 
     @staticmethod

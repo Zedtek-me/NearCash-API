@@ -7,7 +7,7 @@ from apps.core.models import Business
 from apps.core.schema.types.business_types import (
     BusinessType, RouteInputType, BusinessTransactionPolicyType,
     CashCollectionModes, BusinessClientType, AnalyticsType,
-    BusinessClientCategoryType
+    BusinessClientCategoryType, BusinessListType
 )
 from apps.core.constants import LOCATION_SERVICES
 
@@ -27,8 +27,8 @@ class Query(graphene.ObjectType):
         BusinessType,
         business_id=graphene.String(required=True)
     )
-    businesses = graphene.List(
-        BusinessType,
+    businesses = graphene.Field(
+        BusinessListType,
         address=graphene.String(),
         id=graphene.String(),
         name=graphene.String(),
@@ -36,8 +36,8 @@ class Query(graphene.ObjectType):
         page_count=graphene.Int(),
         page_number=graphene.Int()
     )
-    businesses_around_me = graphene.List(
-        BusinessType, current_lat=graphene.Float(required=True),
+    businesses_around_me = graphene.Field(
+        BusinessListType, current_lat=graphene.Float(required=True),
         current_long=graphene.Float(required=True),
         vendor_type=graphene.String(), collection_mode=graphene.String(),
         page_count=graphene.Int(), page_number=graphene.Int()
@@ -125,7 +125,10 @@ class Query(graphene.ObjectType):
         )
         info.context.pagination = paginated
         businesses = paginated.pop("items")
-        return businesses
+        return BusinessListType(
+            businesses=businesses,
+            pagination=paginated
+        )
 
 
     @login_required
@@ -151,7 +154,10 @@ class Query(graphene.ObjectType):
         )
         info.context.pagination = paginated_businesses
         businesses = paginated_businesses.pop("items")
-        return businesses
+        return BusinessListType(
+            businesses=businesses,
+            pagination=paginated_businesses
+        )
 
     @login_required
     def resolve_routes(

@@ -11,6 +11,7 @@ from apps.core.constants import (
 )
 
 from utils.helpers.logs import logger
+from utils.helpers.types import PaginationType
 
 class PointFieldType(graphene.types.Scalar):
     """Custom GraphQL Scalar for GeoDjango PointField"""
@@ -67,6 +68,10 @@ class BusinessType(DjangoObjectType):
             return BusinessUtil.fetch_business_txn_policy_for_current_client(user, self.id)
         return None
 
+
+class BusinessListType(graphene.ObjectType):
+    businesses = graphene.List(BusinessType)
+    pagination = graphene.Field(PaginationType)
 
 class BusinessClientCategoryType(DjangoObjectType):
 
