@@ -3,7 +3,7 @@
 > A geolocation-driven cash and FX liquidity marketplace for Africa — connecting clients who need cash with nearby verified vendors in real time.
 
 <!-- BADGES — you'll add these yourself (see notes below) -->
-![CI](https://github.com/Zedtek-me/NearCash-API/actions/workflows/<your-workflow-file>.yml/badge.svg)
+![CI](https://github.com/Zedtek-me/NearCash-API/actions/workflows/deploy-staging.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -136,18 +136,3 @@ JWT_SECRET	Token signing key
 
 License
 MIT © Zechariah Adebayo
-
-
----
-
-**What you need to do yourself:**
-
-1. **CI badge** — replace `<your-workflow-file>` with the actual filename in `.github/workflows/`. Check what it's called and update that one line.
-
-2. **Architecture diagram** — the ASCII version above is a placeholder. When you have time, make a proper diagram on [Excalidraw](https://excalidraw.com) (free, no login needed) and drop the image into the repo. Replace the ASCII block with it.
-
-3. **Add MIT license** — go to your repo on GitHub → Add file → Create new file → name it `LICENSE` → GitHub will offer you a license template picker → choose MIT → commit. Done in 2 minutes.
-
-4. **Add `.env.example`** — a copy of your `.env` file with all values blanked out. Helps anyone cloning understand what's needed. Don't commit the real `.env`.
-
-5. **Screenshots** — one screenshot of the live app or GraphQL playground at the top would go a long way. Optional but high impact.
