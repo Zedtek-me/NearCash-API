@@ -28,6 +28,7 @@ from apps.core.constants import(
 )
 from apps.wallet.models import Transaction, TransactionOpportunity
 from apps.wallet.constants import FULFILLED, CANCELLED, IN_PROGRESS, INITIATED
+from apps.wallet.schema.types.wallet import InitiateVendorToVendorTransactionInputType
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
@@ -251,11 +252,14 @@ class BusinessUtil:
 
     @classmethod
     def initiate_transaction(
-        cls, client, data: dict,
+        cls, user: User, data: dict, for_client: bool = True
     ) -> Transaction:
         """client initiates transaction to a vendor"""
-        txn = ClientService.initiate_transaction(client, data)
-        return txn
+        trxn = None
+        if for_client:
+            return ClientService.initiate_transaction(user, data)
+        trxn = cls._initiate_vendor_to_vendor_transaction(user, data)
+        return trxn
 
 
     @classmethod
@@ -776,3 +780,66 @@ class BusinessUtil:
     @classmethod
     def _get_local_currency(cls, country: str) -> str:
         return COUNTRY_CURRENCY_MAP.get(country.lower().strip(), "NGN")
+
+
+    @classmethod
+    def initiate_vendor_to_vendor_transaction(
+        cls, user: User, data: InitiateVendorToVendorTransactionInputType | dict
+    ) -> Transaction:
+        """
+        Allows the current vendor to initiate a transaction to another vendor.
+        This helps to facilitate liquidity transfer and sourcing between vendors on the platform.
+        System automatically looks vendors who can fulfill the requested amount and are within a reasonable distance from the initiating vendor, and then sends them a notification about the transaction opportunity.
+        Any vendor who accepts the opportunity gets assigned to the transaction as the vendor, and the initiating vendor gets notified about who accepted the opportunity.
+        """
+        from apps.wallet.schema.types.wallet import TransferModeEnum
+
+        requesting_vendor_id = user.id
+        trxn = cls.initiate_transaction(
+            user, data,
+            for_client=False
+        )
+        data["transfer_mode"] = data.get("transfer_mode", TransferModeEnum.BANK_TRANSFER).value
+        BusinessAsyncOperations.run_initiate_vendor_to_vendor_transaction_task.delay(
+            requesting_vendor_id=requesting_vendor_id, data=dict(data),
+            trxn_id=trxn.id
+        )
+        return trxn
+
+
+    @classmethod
+    def _initiate_vendor_to_vendor_transaction(
+        cls, vendor_as_client_user: User, data: dict
+    ) -> Transaction:
+        """
+        initiates a vendor to vendor transaction
+        """
+        current_location = {}
+        if vendor_as_client_user:
+            db_loc = cls.fetch_existing_user_location(
+                user=vendor_as_client_user, location_type="Vendor"
+            )
+            current_location = {
+                "longitude": db_loc.location.x,
+                "latitude": db_loc.location.y
+            }
+        trxn_ref = TransactionUtil.generate_txn_reference()
+        trxn_data = {
+            "txn_ref": trxn_ref,
+            "amount": data.get("amount"),
+            "currency": data.get("currency_code"),
+            "txn_type": data.get("txn_type"),
+            "transfer_mode": data.get("transfer_mode").value,
+            "vendor": vendor_as_client_user,
+            "client": vendor_as_client_user,
+            "business": None,
+            "meta": {
+                "is_vendor_to_vendor": True,
+                "initiating_vendor_business_id": data.get("business_id"),
+                "client_current_location": {
+                    "longitude": current_location.get("longitude"),
+                    "latitude": current_location.get("latitude")
+                }
+            }
+        }
+        return TransactionUtil.create_transaction(**trxn_data)

@@ -11,6 +11,8 @@ from apps.core.schema.types.business_types import (
 )
 from apps.wallet.schema.types.wallet import (
     AssetInputType,
+    InitiateVendorToVendorTransactionInputType,
+    TransactionType
 )
 
 from utils.core_utils.business_utils import BusinessUtil
@@ -200,6 +202,25 @@ class AcceptTransactionOpportunity(graphene.Mutation):
             message="opportunity_lost"
         )
 
+
+class InitiateVendorToVendorTransaction(graphene.Mutation):
+    message = graphene.String()
+    txn = graphene.Field(TransactionType)
+
+    class Arguments:
+        data = InitiateVendorToVendorTransactionInputType(required=True)
+
+    @login_required
+    @transaction.atomic
+    def mutate(self, info, **kwargs):
+        user = info.context.user
+        data: InitiateVendorToVendorTransactionInputType = kwargs.get("data")
+        txn = BusinessUtil.initiate_vendor_to_vendor_transaction(user, data)
+        return InitiateVendorToVendorTransaction(
+            message="Transaction initiated successfully.",
+            txn=txn
+        )
+
 class Mutation(graphene.ObjectType):
     create_business = CreateBusiness.Field(description="Create a new business for the user.")
     update_business = UpdateBusiness.Field(description="Updates an existing business")
@@ -215,4 +236,7 @@ class Mutation(graphene.ObjectType):
     )
     accept_transaction_opportunity = AcceptTransactionOpportunity.Field(
         description="Accepts a transaction opportunity broadcastd by the system"
+    )
+    initiate_vendor_to_vendor_transaction = InitiateVendorToVendorTransaction.Field(
+        description="Initiates a vendor to vendor transaction"
     )

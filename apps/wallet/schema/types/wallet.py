@@ -68,6 +68,14 @@ class InitiateTransactionInputType(graphene.InputObjectType):
     collection_location = graphene.String(required=False)
 
 
+class InitiateVendorToVendorTransactionInputType(graphene.InputObjectType):
+    amount = graphene.Float(required=True)
+    txn_type = graphene.String(required=True)
+    currency_code = graphene.String(required=True)
+    business_id = graphene.String(required=True)
+    transfer_mode = TransferModeEnum(required=True)
+
+
 class TxnStatusType(graphene.Enum):
     IN_PROGRESS = IN_PROGRESS
     CANCELLED = CANCELLED

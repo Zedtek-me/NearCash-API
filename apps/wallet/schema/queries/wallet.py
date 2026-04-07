@@ -38,6 +38,7 @@ class Query(graphene.ObjectType):
         date_to=graphene.Date(),
         client_id=graphene.String(),
         vendor_id=graphene.String(),
+        request_type=graphene.String(),
         search=graphene.String(),
         page_count=graphene.Int(),
         page_number=graphene.Int()
@@ -102,12 +103,12 @@ class Query(graphene.ObjectType):
         search_filter = Q()
         [
             wallet_id, business_id, status, search, _id, client_id, vendor_id,
-            date_from, date_to
+            date_from, date_to, request_type
         ] = KwargUtil.cherry_pick_data(
             initial_data, [
                 "wallet_id", "business_id", "status",
                 "search", "id", "client_id", "vendor_id",
-                "date_from", "date_to"
+                "date_from", "date_to", "request_type"
             ]
         )
         _filter = {}
@@ -145,6 +146,16 @@ class Query(graphene.ObjectType):
                 Q(asset__business__name__icontains=search) |
                 Q(description__icontains=search)
             )
+        if request_type := initial_data.get("request_type"):
+            request_type = request_type.upper()
+            if request_type == "OUTGOING" and business_id:
+                _filter.pop("business__id", None)
+                _filter.update({
+                    "client": user,
+                    "meta__initiating_vendor_business_id": str(business_id)
+                })
+            elif request_type == "INCOMING":
+                search_filter &= Q(vendor=user)
         return search_filter, _filter
 
     @login_required
@@ -152,5 +163,3 @@ class Query(graphene.ObjectType):
         txn_id = kwargs.get("transaction_id")
         txn = TransactionUtil.get_transaction(id=txn_id)
         return txn
-
-

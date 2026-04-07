@@ -10,8 +10,14 @@ from asgiref.sync import async_to_sync
 
 from utils.helpers.logs import logger
 from utils.helpers.exception import CustomException
+from utils.auth_utils.auths import AuthUtils
+from utils.notifications.notifications import NotificationUtil
 
 from dtos.generics import EmailArgsDto
+
+from apps.wallet.models import Transaction
+from apps.core.models import Business
+from apps.auths.models import User
 
 class BusinessAsyncOperations:
 
@@ -101,7 +107,7 @@ class BusinessAsyncOperations:
 
     @classmethod
     def update_client_last_patronized(
-        cls, client: Type["User"], txn: Type["Transaction"]
+        cls, client: User, txn: Transaction
     ):
         """updates the last time a client patronized a business"""
         from apps.core.models import BusinessClient
@@ -127,7 +133,7 @@ class BusinessAsyncOperations:
         from utils.notifications.notifications import NotificationUtil
         from apps.notification.email.app_emails import EmailService
 
-        txn = TransactionUtil.get_transaction(**{"id": txn_id})
+        txn = TransactionUtil.get_transaction(id=txn_id)
         if not txn:
             raise CustomException(
                 "could not find a transaction with id: %s"%txn_id
@@ -167,10 +173,10 @@ class BusinessAsyncOperations:
                     "client_current_location": txn.meta.get("client_current_location", {}),
                     "mode": txn.collection_mode,
                     "transfer_mode": txn.transfer_mode,
-                    "vendor_name": txn.business.name,
+                    "vendor_name": txn.business and txn.business.name or None,
                     "client_name": txn.client.full_name,
                     "client_phone_number": txn.client.phone_number,
-                    "vendor_phone_number": vendor.phone_number
+                    "vendor_phone_number": vendor and vendor.phone_number or None
                 }
 
         if not for_vendor:
@@ -210,7 +216,7 @@ class BusinessAsyncOperations:
         # close connection to remove staleness
         connection.close()
 
-        trxn = TransactionUtil.get_transaction(id=trxn_id)
+        trxn: Transaction = TransactionUtil.get_transaction(id=trxn_id)
         if not trxn:
             logger.error(f"no transaction with id {trxn_id}")
             return
@@ -263,10 +269,9 @@ class BusinessAsyncOperations:
 
         trxn_meta: dict = trxn.meta
         trxn_initiation_point = trxn_meta.get("client_current_location") or {}
-        latitude: float | None = trxn_initiation_point.get("latitude")
-        longitude: float | None = trxn_initiation_point.get("longitude")
+        latitude: float = trxn_initiation_point.get("latitude") or 0.0
+        longitude: float  = trxn_initiation_point.get("longitude") or 0.0
         client: User = trxn.client
-        trxn_amount = trxn.amount
 
         if not (latitude and longitude):
             cur_location = BusinessUtil.fetch_existing_user_location(
@@ -275,71 +280,17 @@ class BusinessAsyncOperations:
             latitude = cur_location and cur_location.location.y
             longitude = cur_location and cur_location.location.x
 
-        nearby_vendors = BusinessUtil.get_nearby_businesses(
-            client,
-            current_lat=latitude,
-            current_long=longitude,
-            vendor_type=trxn.txn_type or "local"
-        ).exclude(id=trxn.business.id).filter(
-            available_liquidity__gte=trxn_amount
-        )
-        trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn)
-
-        if "vendor_name" in trxn_info and "vendor_phone_number" in trxn_info:
-            del trxn_info["vendor_name"]
-            del trxn_info["vendor_phone_number"]
-
-        trxn_opportunity_msg = {
-            "message_type": "Transaction Opportunity!",
-            "txn_info": trxn_info
-        }
-        title = "Transaction Opportunity!"
-        body = (
-           "A client who is less than {} {} away from you needs an amount of {}\n"
+        custom_msg_type = "Transaction Opportunity!"
+        custom_msg_body =  (
+           "A Client who is less than {}{} away from you needs an amount of {}\n"
            "Would you be able to fulfil it?"
         )
-        if nearby_vendors and len(nearby_vendors) > 0:
-            # Group businesses by owner
-            owner_businesses: dict[User, list] = {}
-            for business in nearby_vendors:
-                owner: User = business.owner
-                if owner not in owner_businesses:
-                    owner_businesses[owner] = []
-                owner_businesses[owner].append(business)
-
-            for owner, businesses in owner_businesses.items():
-                trxn_opportunity_msg["txn_info"].update({
-                    "vendor_name": owner.full_name,
-                    "businesses": [
-                        {"id": b.id, "name": b.name}
-                        for b in businesses
-                    ]
-                })
-
-                for business in businesses:
-                    formatted_body = body.format(
-                    business.distance.km,
-                    "m" if business.distance.km < 1 else "km",
-                    trxn_amount
-                )
-                    BusinessUtil.register_opportunity_for_business(
-                        trxn, business
-                    )
-                    NotificationUtil.record_notification(
-                        title=title,
-                        body=formatted_body,
-                        entity=business
-                    )
-                channel_layer = get_channel_layer()
-                async_to_sync(
-                    channel_layer.group_send
-                )(
-                    owner.user_queue,
-                    {
-                        "type": "send.notification",
-                        "message": trxn_opportunity_msg
-                    }
-                )
+        BusinessAsyncOperations._fetch_vendors_and_publish_trxn_op(
+            user=client, trxn=trxn, latitude=latitude, longitude=longitude,
+            exclude_business_id=trxn.business.id if trxn.business else None,
+            custom_msg_type=custom_msg_type,
+            custom_msg_body=custom_msg_body
+        )
         trxn.meta["re_routed"] = True
         trxn.save()
         # notifies client later if no vendor takes action about the trxn in next 30 seconds
@@ -349,13 +300,6 @@ class BusinessAsyncOperations:
             ),
             kwargs={"trxn_id": trxn_id, "custom_message_type": "No Available Vendors"}
         )
-
-
-    @classmethod
-    def _get_values_from_keys(
-        cls, data: list[dict], key_to_check: str = "business_id"
-    ) -> list:
-        return [item.get(key_to_check) for item in data if key_to_check in item]
 
 
     @shared_task(
@@ -382,3 +326,205 @@ class BusinessAsyncOperations:
             transaction=trxn
         )
         all_opportunities.update(is_active=False)
+
+
+    @shared_task(
+        bind=True, name="initiate-vendor-to-vendor-transaction"
+    )
+    def run_initiate_vendor_to_vendor_transaction_task(
+        self, requesting_vendor_id: str | int, data: dict,
+        trxn_id: str | int
+    ):
+        """
+        initiates a vendor to vendor transaction asynchronously
+        """
+        from utils.core_utils.business_utils import BusinessUtil
+        from utils.wallet_utils.transactions import TransactionUtil
+        from apps.core.models import Business
+        from apps.auths.models import User
+
+        trxn = TransactionUtil.get_transaction(id=trxn_id)
+        requesting_vendor: User | None = AuthUtils.fetch_user({"id": requesting_vendor_id, "meta__user_type": "VENDOR"}) or trxn.client
+        if not requesting_vendor:
+            logger.error(f"requesting vendor with id {requesting_vendor_id} not found!")
+            return
+        requesting_vendor_business: Business | None = BusinessUtil.get_business(
+            {
+                "owner_id": requesting_vendor_id,
+                "id": data.get("business_id"),
+                "business_type": data.get("txn_type")
+            }
+        )
+        if not requesting_vendor_business:
+            logger.error(f"business with id {data.get('business_id')} not found for vendor {requesting_vendor_id}!")
+            return
+        vendor_curr_location = {}
+        if requesting_vendor_business:
+            vendor_curr_location = {
+                "longitude": requesting_vendor_business.geo_location.x,
+                "latitude": requesting_vendor_business.geo_location.y
+            }
+        if not vendor_curr_location:
+            db_loc = BusinessUtil.fetch_existing_user_location(
+                requesting_vendor, location_type="Vendor"
+            )
+            vendor_curr_location = {
+                "longitude": trxn.meta.get("client_current_location", {}).get("longitude"),
+                "latitude": trxn.meta.get("client_current_location", {}).get("latitude")
+            } or {
+                "longitude": db_loc.location.x,
+                "latitude": db_loc.location.y
+            }
+        BusinessAsyncOperations._fetch_vendors_and_publish_trxn_op(
+            user=requesting_vendor, trxn=trxn,
+            latitude=vendor_curr_location.get("latitude", 0.0),
+            longitude=vendor_curr_location.get("longitude", 0.0),
+            exclude_business_id=data.get("business_id"),
+            custom_msg_type="Liquidity Request!",
+            custom_msg_body=(
+                "Another vendor who is less than {}{} away from you needs an amount of {}\n"
+                "Would you be able to fulfil it?"
+            )
+        )
+        # notifies the requesting vendor later if no other vendor takes action about the trxn in next 30 seconds
+        BusinessAsyncOperations.check_vendor_transaction_responsiveness.apply_async(
+            eta=(
+                trxn.last_updated + timezone.timedelta(seconds=30)
+            ),
+            kwargs={"trxn_id": trxn_id, "custom_message_type": "No Available Vendors"}
+        )
+        return
+
+
+    @classmethod
+    def _fetch_vendors_and_publish_trxn_op(
+        cls, user, trxn: Transaction,
+        latitude: float, longitude: float,
+        exclude_business_id: Optional[str] = None,
+        custom_msg_type: str = "Transaction Opportunity!",
+        custom_msg_body: Optional[str] = None
+    ) -> bool:
+        from utils.core_utils.business_utils import BusinessUtil
+        from apps.auths.models import User
+
+        nearby_vendors = list(BusinessUtil.get_nearby_businesses(
+            user,
+            current_lat=latitude,
+            current_long=longitude,
+            vendor_type=trxn.txn_type or "local"
+        ).exclude(id=exclude_business_id).filter(
+            available_liquidity__gte=trxn.amount
+        ))
+        trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn, skip_error=True)
+
+        if "vendor_name" in trxn_info and "vendor_phone_number" in trxn_info:
+            del trxn_info["vendor_name"]
+            del trxn_info["vendor_phone_number"]
+
+
+        trxn_opportunity_msg = {
+            "message_type": custom_msg_type,
+            "txn_info": trxn_info
+        }
+        title = custom_msg_type
+        body = (
+           "Another vendor who is less than {}{} away from you needs an amount of {}\n"
+           "Would you be able to fulfil it?"
+        )
+        logger.debug(f"title for trxn opportunity in v2v: {title}\n body for trxn opportunity in v2v: {body}\n nearby vendors found: {nearby_vendors}")
+        if custom_msg_body:
+            body = custom_msg_body
+        if nearby_vendors and len(nearby_vendors) > 0:
+            owner_businesses = cls._get_owners_and_businesses(nearby_vendors)
+
+            for owner, businesses in owner_businesses.items():
+                trxn_opportunity_msg = cls._update_trxn_opportunity_msg(
+                    owner, trxn_opportunity_msg, businesses
+                )
+
+                cls._register_opportunity_for_business(
+                    trxn, businesses,
+                    title=title,
+                    body=body
+                )
+
+                cls._publish_trxn_opportunity_to_vendors(
+                    owner, trxn_opportunity_msg
+                )
+            return True
+        return False
+
+
+    @classmethod
+    def _get_owners_and_businesses(
+        cls, businesses: List[Business]
+    ) -> dict:
+        owners_and_businesses = {}
+        for business in businesses:
+            owner = business.owner
+            if owner not in owners_and_businesses:
+                owners_and_businesses[owner] = []
+            owners_and_businesses[owner].append(business)
+        return owners_and_businesses
+
+
+    @classmethod
+    def _register_opportunity_for_business(
+        cls, trxn: Transaction, businesses: List[Business],
+        title: str = "Transaction Opportunity!",
+        body: str = (
+           "A Client who is less than {}{} away from you needs "
+           "an amount of {}\n"
+           "Would you be able to fulfil it?"
+        )
+    ):
+        from utils.core_utils.business_utils import BusinessUtil
+
+        for business in businesses:
+            formatted_body = body.format(
+            business.distance.km,
+            "m" if business.distance.km < 1 else "km",
+            trxn.amount
+        )
+            BusinessUtil.register_opportunity_for_business(
+                trxn, business
+            )
+            NotificationUtil.record_notification(
+                title=title,
+                body=formatted_body,
+                entity=business
+            )
+
+
+    @classmethod
+    def _publish_trxn_opportunity_to_vendors(
+        cls, owner: User,
+        trxn_opportunity_msg: dict
+    ) -> bool:
+        channel_layer = get_channel_layer()
+        logger.debug(f"Publishing transaction opportunity to vendors for owner: {owner.id}\n message: {trxn_opportunity_msg}")
+        async_to_sync(
+            channel_layer.group_send
+        )(
+            owner.user_queue,
+            {
+                "type": "send.notification",
+                "message": trxn_opportunity_msg
+            }
+        )
+        return True
+
+
+    @classmethod
+    def _update_trxn_opportunity_msg(
+        cls, owner: User, trxn_opportunity_msg: dict,
+        businesses: list[Business]
+    ) -> dict:
+        trxn_opportunity_msg["txn_info"].update({
+            "vendor_name": owner.full_name,
+            "businesses": [
+                {"id": b.id, "name": b.name}
+                for b in businesses
+            ]
+        })
+        return trxn_opportunity_msg

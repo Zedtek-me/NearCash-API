@@ -47,7 +47,8 @@ class Transaction(BaseModel):
         related_query_name="vendor_transactions", null=True
     )
     asset = models.ForeignKey(
-        to="wallet.FinancialAsset", on_delete=models.CASCADE, related_name="transactions"
+        to="wallet.FinancialAsset", on_delete=models.SET_NULL, related_name="transactions",
+        null=True
     )
     amount = models.FloatField(help_text="amount intended to be withdrawn", default=0.0)
     charge = models.FloatField(help_text="amount charged for the txn", default=0.0)
