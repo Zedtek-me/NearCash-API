@@ -752,6 +752,8 @@ class BusinessUtil:
         """
         trxn_id, trxn_ref = data.get("txn_id"), data.get("txn_ref")
         vendor_business_id = data.get("business_id")
+        is_v2v = data.get("is_vendor_to_vendor", False)
+        proposed_amount = data.get("proposed_amount")
         vendor_who_accepted_transaction = cls.get_business({"id": vendor_business_id})
         if not vendor_who_accepted_transaction:
             raise CustomException(
@@ -767,6 +769,31 @@ class BusinessUtil:
                 )
             if trxn.status != INITIATED:
                 return False
+            if is_v2v and not proposed_amount:
+                raise CustomException(
+                    "Please specify how much you're proposing for this transaction opportunity!"
+                )
+            if is_v2v:
+                trxn_meta = trxn.meta or {}
+                if "proposed_amounts" not in trxn_meta:
+                    trxn_meta["proposed_amounts"] = []
+                trxn_meta["proposed_amounts"].append({
+                    "vendor": {
+                        "id": vendor_who_accepted_transaction.id,
+                        "name": vendor_who_accepted_transaction.name
+                    },
+                    "amount": proposed_amount,
+                    "expiry": (
+                        timezone.now() + timezone.timedelta(minutes=1)
+                    ).isoformat()
+                })
+                trxn.meta["is_v2v"] = True
+                trxn.meta = trxn_meta
+                trxn.save()
+                BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay(
+                    trxn_id=trxn.id, is_v2v=is_v2v
+                )
+                return True
             trxn.status = IN_PROGRESS
             trxn.vendor = vendor_who_accepted_transaction.owner
             trxn.business = vendor_who_accepted_transaction
@@ -834,7 +861,7 @@ class BusinessUtil:
             "client": vendor_as_client_user,
             "business": None,
             "meta": {
-                "is_vendor_to_vendor": True,
+                "is_v2v": True,
                 "initiating_vendor_business_id": data.get("business_id"),
                 "client_current_location": {
                     "longitude": current_location.get("longitude"),

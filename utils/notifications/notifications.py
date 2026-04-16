@@ -202,6 +202,7 @@ class NotificationUtil:
             txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
                 txn, for_vendor=for_vendor_notif
             )
+            is_v2v = txn.meta.get("is_v2v", False)
             txn_status = txn.status.title()
             txn_status = "Approved" if txn_status == "In_Progress" else txn_status
             vendor: User = txn.vendor
@@ -227,6 +228,10 @@ class NotificationUtil:
                         and for_vendor_notif
                         else f"Transaction {txn_status}!"
                     )
+            if is_v2v:
+                txn_info.update({
+                    "proposed_amounts": txn.meta.get("proposed_amounts", []),
+                })
             if not skip_record:
                 cls.create_notification_async.delay(
                     title=title,
@@ -317,7 +322,7 @@ class NotificationUtil:
                 else "Transaction Status Update"
             )
             body = (
-                f"{business.name} has {txn_status} your transaction of amount "
+                f"{business and business.name or 'A business'} has {txn_status} your transaction of amount "
                 f"{txn.amount}{txn.currency}."
             )
         if custom_title:

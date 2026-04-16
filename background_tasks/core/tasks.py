@@ -222,6 +222,13 @@ class BusinessAsyncOperations:
             return
 
         client: User = trxn.client
+        trxn_meta: dict = trxn._meta or {}
+        is_v2v = trxn_meta.get("is_v2v")
+        vendors_have_proposed = bool(trxn_meta.get("proposed_amounts"))
+
+        if is_v2v and vendors_have_proposed:
+            return
+
         channel_layer = get_channel_layer()
         trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn, for_vendor=False)
         client_message = {
@@ -306,7 +313,7 @@ class BusinessAsyncOperations:
         bind=True, name="post-opportunity-acceptance-task"
     )
     def run_post_opportunity_acceptance_task(
-        self, trxn_id: str
+        self, trxn_id: str, is_v2v: bool = False
     ):
         """
         all things to be done after a vendor accepts a transaction opportunity
@@ -319,13 +326,32 @@ class BusinessAsyncOperations:
         trxn = TransactionUtil.get_transaction(id=trxn_id)
 
         # notify client of transaction acceptance
+        custom_msg_type = None
+        custom_title = None
+        custom_body = None
+        if is_v2v:
+            trxn_meta = trxn.meta or {}
+            vendors_who_proposed = trxn_meta.get("proposed_amounts", [])
+            custom_msg_type = custom_title = "Proposed Amount"
+            custom_body = (
+                f"{'Some' if len(vendors_who_proposed) > 1 else 'A'} vendor{'s' if len(vendors_who_proposed) > 1 else ''} "
+                f"proposed {'their' if len(vendors_who_proposed) > 1 else 'an'} amount for this request.\n"
+            )
+            # decide later whether to schedule a task to notify each proposing vendor 
+            # about expiry if the initiating vendor does not accept their proposal within
+            # within the expiry time earlier set when proposing.
         NotificationUtil.send_socket_notification(
-                txn=trxn, for_vendor_notif=False
+                txn=trxn, for_vendor_notif=False,
+                custom_msg_type=custom_msg_type,
+                custom_title=custom_title,
+                custom_body=custom_body,
+                skip_record=is_v2v
         )
-        all_opportunities = TransactionOpportunity.objects.filter(
-            transaction=trxn
-        )
-        all_opportunities.update(is_active=False)
+        if not is_v2v:
+            all_opportunities = TransactionOpportunity.objects.filter(
+                transaction=trxn
+            )
+            all_opportunities.update(is_active=False)
 
 
     @shared_task(
@@ -358,13 +384,16 @@ class BusinessAsyncOperations:
         if not requesting_vendor_business:
             logger.error(f"business with id {data.get('business_id')} not found for vendor {requesting_vendor_id}!")
             return
-        vendor_curr_location = {}
-        if requesting_vendor_business:
-            vendor_curr_location = {
-                "longitude": requesting_vendor_business.geo_location.x,
-                "latitude": requesting_vendor_business.geo_location.y
-            }
-        if not vendor_curr_location:
+
+        vendor_curr_location = {
+            "longitude": requesting_vendor_business.geo_location.x,
+            "latitude": requesting_vendor_business.geo_location.y
+        }
+        if (
+          not vendor_curr_location or
+          vendor_curr_location.get("longitude") is None or
+          vendor_curr_location.get("latitude") is None
+        ):
             db_loc = BusinessUtil.fetch_existing_user_location(
                 requesting_vendor, location_type="Vendor"
             )
