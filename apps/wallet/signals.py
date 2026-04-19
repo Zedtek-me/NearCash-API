@@ -8,7 +8,7 @@ from utils.helpers.general import generate_unique_id
 def optionally_return_liquidity(
     sender: Transaction,
     instance: Transaction,
-    updated: bool = False,
+    created: bool = False,
     **kwargs
 ):
     """
@@ -18,7 +18,7 @@ def optionally_return_liquidity(
     """
     from background_tasks.core.tasks import BusinessAsyncOperations
 
-    if updated and instance.status == CANCELLED and not instance.meta.get("liquidity_returned"):
+    if not created and instance.status == CANCELLED and not instance.meta.get("liquidity_returned"):
         BusinessAsyncOperations.return_transaction_amount_to_vendor_available_liquidity(
             instance.business, instance
         )
