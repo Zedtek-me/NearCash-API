@@ -223,6 +223,27 @@ class InitiateVendorToVendorTransaction(graphene.Mutation):
             txn=txn
         )
 
+class AcceptProposedAmount(graphene.Mutation):
+    message = graphene.String()
+    txn = graphene.Field(TransactionType)
+
+    class Arguments:
+        txn_id = graphene.String(required=True)
+        proposed_amount = graphene.Float(required=True)
+        vendor_business_id = graphene.String(required=True)
+
+    @login_required
+    @transaction.atomic
+    def mutate(self, info, **kwargs):
+        user = info.context.user
+        txn_id = kwargs.pop("txn_id", None)
+        txn = BusinessUtil.accept_proposed_amount(user, txn_id, **kwargs)
+        return AcceptProposedAmount(
+            message="Proposed amount accepted successfully.",
+            txn=txn
+        )
+
+
 class Mutation(graphene.ObjectType):
     create_business = CreateBusiness.Field(description="Create a new business for the user.")
     update_business = UpdateBusiness.Field(description="Updates an existing business")
@@ -241,4 +262,7 @@ class Mutation(graphene.ObjectType):
     )
     initiate_vendor_to_vendor_transaction = InitiateVendorToVendorTransaction.Field(
         description="Initiates a vendor to vendor transaction"
+    )
+    accept_proposed_amount = AcceptProposedAmount.Field(
+        description="Accepts a proposed amount for a transaction"
     )

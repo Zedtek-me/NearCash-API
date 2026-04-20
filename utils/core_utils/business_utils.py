@@ -870,3 +870,39 @@ class BusinessUtil:
             }
         }
         return TransactionUtil.create_transaction(**trxn_data)
+
+
+    @classmethod
+    def accept_proposed_amount(
+        cls, user: User, trxn_id: str | int, **kwargs
+    ):
+        """
+        allows an initiating vendor to accept a proposed amount
+        from another vendor in a vendor-to-vendor transaction scenario.
+        """
+        proposed_amount = kwargs.get("proposed_amount", 0)
+        vendor_business_id = kwargs.get("vendor_business_id")
+        trxn = TransactionUtil.get_transaction(id=trxn_id)
+        if not trxn:
+            raise CustomException(
+                f"couldn't find a transaction with id: {trxn_id}!"
+            )
+        if trxn.status != INITIATED:
+            return
+        if trxn.client != user:
+            raise CustomException(
+                "Only the initiating vendor can accept a proposed amount for this transaction!"
+            )
+        vendor_business = cls.get_business({"id": vendor_business_id})
+        if not vendor_business:
+            raise CustomException(
+                f"couldn't find a business with id: {vendor_business_id}!"
+            )
+        trxn.vendor = vendor_business.owner
+        trxn.business = vendor_business
+        trxn.charge = proposed_amount
+        trxn.status = IN_PROGRESS
+        trxn.save()
+        transaction.on_commit(
+            lambda: True #TODO: notify the proposing vendor about the acceptance of their proposed amount.
+        )
