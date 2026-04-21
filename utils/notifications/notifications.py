@@ -215,7 +215,7 @@ class NotificationUtil:
                 txn, client, for_vendor_notif, business,
                 custom_title=custom_title, custom_body=custom_body
             )
-            if txn_status == "Approved" and mode_of_transfer == BANK_TRANSFER:
+            if (txn_status == "Approved" or is_v2v) and mode_of_transfer == BANK_TRANSFER:
                 #generate virtual account for the client to pay into
                 try:
                     txn_info = TransactionUtil.update_trxn_info_with_account_details(txn, txn_info, client)
