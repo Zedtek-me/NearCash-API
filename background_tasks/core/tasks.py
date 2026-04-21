@@ -222,7 +222,7 @@ class BusinessAsyncOperations:
             return
 
         client: User = trxn.client
-        trxn_meta: dict = trxn._meta or {}
+        trxn_meta: dict = trxn.meta or {}
         is_v2v = trxn_meta.get("is_v2v")
         vendors_have_proposed = bool(trxn_meta.get("proposed_amounts"))
 
@@ -571,26 +571,28 @@ class BusinessAsyncOperations:
         """
         from utils.wallet_utils.transactions import TransactionUtil
 
-        trxn = TransactionUtil.get_transaction(id=trxn_id)
-        if not trxn:
-            logger.error(f"transaction with id {trxn_id} not found for notifying proposing vendor of acceptance!")
-            return
+        with transaction.atomic():
+            trxn = TransactionUtil.get_transaction(id=trxn_id)
+            trxn.refresh_from_db()
+            if not trxn:
+                logger.error(f"transaction with id {trxn_id} not found for notifying proposing vendor of acceptance!")
+                return
 
-        if not trxn.business or not trxn.vendor or trxn.vendor.id == trxn.client.id:
-            logger.error(f"initiating vendor hasn't accepted any vendor proposal for trxn with id {trxn.id} yet!")
-            return
+            if not trxn.business or not trxn.vendor or trxn.vendor.id == trxn.client.id:
+                logger.error(f"initiating vendor hasn't accepted any vendor proposal for trxn with id {trxn.id} yet!")
+                return
 
-        vendor_user = trxn.vendor
-        channel_layer = get_channel_layer()
-        user_queue = vendor_user.user_queue
-        trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn, for_vendor=False)
-        acceptance_message = {
-            "type": "send.notification",
-            "message": {
-                "message_type": "Proposed Amount Accepted!",
-                "txn_info": trxn_info
+            vendor_user = trxn.vendor
+            channel_layer = get_channel_layer()
+            user_queue = vendor_user.user_queue
+            trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn, for_vendor=False)
+            acceptance_message = {
+                "type": "send.notification",
+                "message": {
+                    "message_type": "Proposed Amount Accepted!",
+                    "txn_info": trxn_info
+                }
             }
-        }
-        async_to_sync(channel_layer.group_send)(
-            user_queue, acceptance_message
-        )
+            async_to_sync(channel_layer.group_send)(
+                user_queue, acceptance_message
+            )
