@@ -557,3 +557,40 @@ class BusinessAsyncOperations:
             ]
         })
         return trxn_opportunity_msg
+
+
+    @shared_task(
+        bind=True, name="notify-proposing-vendor-of-acceptance"
+    )
+    def notify_proposing_vendor_of_acceptance(
+        self, trxn_id: IndentationError
+    ) -> None:
+        """
+        informs the proposing vendor whose proposal was accepted by the initiating vendor
+        about about the acceptance of their proposed amount
+        """
+        from utils.wallet_utils.transactions import TransactionUtil
+
+        trxn = TransactionUtil.get_transaction(id=trxn_id)
+        if not trxn:
+            logger.error(f"transaction with id {trxn_id} not found for notifying proposing vendor of acceptance!")
+            return
+
+        if not trxn.business or not trxn.vendor or trxn.vendor.id == trxn.client.id:
+            logger.error(f"initiating vendor hasn't accepted any vendor proposal for trxn with id {trxn.id} yet!")
+            return
+
+        vendor_user = trxn.vendor
+        channel_layer = get_channel_layer()
+        user_queue = vendor_user.user_queue
+        trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn, for_vendor=False)
+        acceptance_message = {
+            "type": "send.notification",
+            "message": {
+                "message_type": "Proposed Amount Accepted!",
+                "txn_info": trxn_info
+            }
+        }
+        async_to_sync(channel_layer.group_send)(
+            user_queue, acceptance_message
+        )

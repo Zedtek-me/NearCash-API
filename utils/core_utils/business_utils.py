@@ -904,5 +904,7 @@ class BusinessUtil:
         trxn.status = IN_PROGRESS
         trxn.save()
         transaction.on_commit(
-            lambda: True #TODO: notify the proposing vendor about the acceptance of their proposed amount.
+            lambda: BusinessAsyncOperations.notify_proposing_vendor_of_acceptance.delay(
+                trxn_id=trxn.id
+            )
         )
