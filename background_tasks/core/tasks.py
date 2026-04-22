@@ -578,7 +578,7 @@ class BusinessAsyncOperations:
                 logger.error(f"transaction with id {trxn_id} not found for notifying proposing vendor of acceptance!")
                 return
 
-            if not trxn.business or not trxn.vendor or trxn.vendor.id == trxn.client.id:
+            if not trxn.business or not trxn.vendor:
                 logger.error(f"initiating vendor hasn't accepted any vendor proposal for trxn with id {trxn.id} yet!")
                 return
 
