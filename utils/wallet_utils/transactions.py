@@ -161,7 +161,7 @@ class TransactionUtil:
         recipients = [ client.email if not for_vendor else vendor.email ]
         context = {
             "confirmation_code": code,
-            "user_type":user_type,
+            "user_type": user_type,
             "user_fullname": client.full_name if not for_vendor else vendor.full_name
         }
         EmailService.send_mail_async.delay(**{
