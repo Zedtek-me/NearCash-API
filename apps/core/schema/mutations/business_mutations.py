@@ -216,7 +216,7 @@ class InitiateVendorToVendorTransaction(graphene.Mutation):
     @transaction.atomic
     def mutate(self, info, **kwargs):
         user = info.context.user
-        data: InitiateVendorToVendorTransactionInputType = kwargs.get("data")
+        data: InitiateVendorToVendorTransactionInputType = kwargs.get("data", {})
         txn = BusinessUtil.initiate_vendor_to_vendor_transaction(user, data)
         return InitiateVendorToVendorTransaction(
             message="Transaction initiated successfully.",
