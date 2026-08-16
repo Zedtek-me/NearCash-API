@@ -15,6 +15,9 @@ from apps.wallet.models import (
     Transaction, FinancialAsset
 )
 from apps.wallet.services import WalletService
+from apps.wallet.constants import (
+    FX, LOCAL, BANK_TRANSFER, CARD, CASH
+)
 
 
 
@@ -176,14 +179,26 @@ class ClientService:
 
 
         [
-            asset_id, vendor_id
-        ] = data.get("asset_id"), data.get("vendor_id")
-        fin_asset = WalletService.get_financial_asset(
-            raise_exc=True, id=asset_id, business__id=vendor_id
+            asset_id, vendor_id, trxn_type
+        ] = (
+            data.get("asset_id"),
+            data.get("vendor_id"),
+            data.get("txn_type", "")
         )
-        txn_data: dict = cls._validate_txn_data(
-            data, client, fin_asset
-        )
+
+        if not isinstance(trxn_type, str):
+            trxn_type = trxn_type.value.upper()
+        if trxn_type.upper() != FX:
+            fin_asset = WalletService.get_financial_asset(
+                raise_exc=True, id=asset_id, business__id=vendor_id
+            )
+            txn_data: dict = cls._validate_txn_data(
+                data, client, fin_asset
+            )
+        else:
+            txn_data = cls._validate_fx_trxn_data(
+                client, data
+            )
         txn = TransactionUtil.create_transaction(**txn_data)
         BusinessAsyncOperations.notify_vendor_about_transaction.delay(txn_id=txn.id)
         schedule_time = txn.date_created + timezone.timedelta(seconds=30)
@@ -192,6 +207,55 @@ class ClientService:
             kwargs={"trxn_id": txn.id}
         )
         return txn
+
+
+    @classmethod
+    def _validate_fx_trxn_data(
+        cls, client: User, data: dict
+    ) -> dict:
+        """
+        validates all transaction data for foreign exchange trxn
+        """
+        from apps.wallet.schema.types.wallet import TransferModeEnum
+        from utils.wallet_utils.transactions import TransactionUtil
+
+        amount_requested = data.get("amount_to_withdraw", 0.0)
+        transfer_mode = data.get("transfer_mode", TransferModeEnum.BANK_TRANSFER)
+        if not amount_requested or float(amount_requested) <= 0:
+            raise CustomException(
+                message=f"please specify an amount greater than {amount_requested}"
+            )
+        if not isinstance(transfer_mode, str):
+            transfer_mode = transfer_mode.value
+
+        if transfer_mode.strip().upper() not in [BANK_TRANSFER, CARD, CASH]:
+            raise CustomException(
+                message=f"Invalid transfer mode {transfer_mode} for foreign exchange transaction."
+            )
+        trxn_data = {
+            "txn_ref": TransactionUtil.generate_txn_reference(),
+            "client": client,
+            "vendor": None,
+            "asset": None,
+            "amount": amount_requested,
+            "charge": 0.0,
+            "currency": data.get("destination_currency_code", "USD"),
+            "business": None,
+            "collection_mode": data.get("collection_mode").value,
+            "meta": {
+                "client_current_coordinates": {
+                    "longitude": data.get("client_current_coordinates").x,
+                    "latitude": data.get("client_current_coordinates").y
+                },
+                "txn_type": FX,
+                "currency_pair": {
+                    "source_currency_code": data.get("source_currency_code"),
+                    "destination_currency_code": data.get("destination_currency_code")
+                }
+            },
+            "txn_type": FX
+        }
+        return trxn_data
 
 
     @classmethod

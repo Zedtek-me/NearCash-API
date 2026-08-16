@@ -79,6 +79,7 @@ class PaymentService(PaymentInterface):
         provider = cls.provider or "flutterwave"
         existing_customer_info = UserUtil.fetch_user_thirdparty_customer_info(client, provider)
         if existing_customer_info:
+            logger.debug(f"existing customer information::::::: {existing_customer_info}")
             return existing_customer_info
         payload = {
             "name": {
@@ -141,6 +142,7 @@ class PaymentService(PaymentInterface):
             payload.update({"nin": client.profile.nin})
         else:
             payload.update({"bvn": client.profile.bvn})
+        logger.debug(f"virtual card creation payload::::: {payload}")
         response = cls.client.post(
             endpoint=endpoint,
             headers=headers,

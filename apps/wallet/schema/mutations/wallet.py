@@ -77,6 +77,7 @@ class UpdateTxnStatus(graphene.Mutation):
     class Arguments:
         txn_id = graphene.String(required=True)
         status = TxnStatusType(required=True)
+        txn_type = graphene.String(required=False)
 
     @login_required
     def mutate(self, info, **kwargs):

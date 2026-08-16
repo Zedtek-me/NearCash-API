@@ -111,8 +111,8 @@ class BusinessClientCategory(BaseModel):
 
     class Meta(BaseModel.Meta):
         db_table = "business_client_category"
-        verbose_name = "categry for clients"
-        verbose_name_plural = "category for clients"
+        verbose_name = "category for clients"
+        verbose_name_plural = "categories for clients"
 
 
 class BusinessClient(BaseModel):
@@ -192,3 +192,4 @@ class CurrentLocation(BaseModel):
         verbose_name = "current location"
         verbose_name_plural = "current locations"
         ordering = ["-date_created"]
+

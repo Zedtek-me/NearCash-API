@@ -1,4 +1,4 @@
-from typing import Optional, Union, List, Type
+from typing import Optional, Union, List, Type, Dict
 
 from dateutil.relativedelta import relativedelta
 
@@ -26,7 +26,7 @@ from apps.core.constants import(
      LOCATION_SERVICES, COUNTRY_CURRENCY_MAP,
      MEET_UP, STORE_WALK_IN, MEET_UP_AND_STORE_WALK_IN
 )
-from apps.wallet.models import Transaction, TransactionOpportunity
+from apps.wallet.models import Transaction, TransactionOpportunity, SupportedCurrency
 from apps.wallet.constants import FULFILLED, CANCELLED, IN_PROGRESS, INITIATED
 from apps.wallet.schema.types.wallet import InitiateVendorToVendorTransactionInputType
 
@@ -50,8 +50,9 @@ class BusinessUtil:
     ) -> Business:
         """creates a vendor business"""
 
-        country = data.get("country", "").title()
-        business_type = data.get("business_type", "").title()
+        country: str = data.get("country", "").title()
+        business_type: str = data.get("business_type", "").title()
+        supported_currencies: List[str] = data.pop("supported_currencies", [])
         # TODO: use a mapping of countries and their currencies plus country code
         # in order to update currency, in case none is provided
         if not user.businesses.exists():
@@ -63,6 +64,7 @@ class BusinessUtil:
         if business_type and business_type != "Local":
             # it's an FX business
             business.currency = "FXB"
+            cls.register_business_supported_currencies(business, supported_currencies)
         business.save()
         google_service = LOCATION_SERVICES.get("google")
         coordinates = GeolocationUtils(google_service).get_coordinate(
@@ -80,6 +82,63 @@ class BusinessUtil:
         )
         return business
 
+
+    @classmethod
+    def register_business_supported_currencies(
+        cls, business: Business, currencies: List[str]
+    ) -> Business:
+        """
+        For FX businesses, we want to register the currencies they support
+        """
+        if not currencies:
+            raise CustomException(
+                "FX businesses must provide a list of currencies they support!"
+            )
+        db_currencies = []
+        for currency in currencies:
+            fmt_currency = currency.strip().upper()
+            db_currencies.append(
+                SupportedCurrency(
+                    business=business, currency_code=fmt_currency
+                )
+            )
+        SupportedCurrency.objects.bulk_create(db_currencies)
+        return business
+
+
+    @classmethod
+    def update_business_supported_currencies(
+        cls, business: Business, supported_currencies: List[Dict[str, str | float]]
+    ) -> Business:
+        """
+        updates the supported currencies for a business
+        """
+        if not supported_currencies:
+            raise CustomException(
+                "FX businesses must provide a list of currencies they support!"
+            )
+        for currency in supported_currencies:
+            fmt_currency = str(currency.get("currency", "")).strip().upper()
+            available_liquidity = float(currency.get("available_liquidity", 0.0))
+            SupportedCurrency.objects.update_or_create(
+                business=business, currency_code=fmt_currency,
+                defaults={"available_liquidity": available_liquidity}
+            )
+        return business
+
+    @classmethod
+    def get_vendors_specifically_for_given_fx_currency(
+        cls, fx_businesses: QuerySet, trxn: Transaction
+    ) -> QuerySet:
+        """
+        filters the given FX businesses to only those that support the given currency,
+        and has enough liquidity to handle the transaction amount
+        """
+        return fx_businesses.filter(
+            supported_currencies__currency_code__iexact=trxn.currency,
+            supported_currencies__available_liquidity__gte=trxn.amount
+        )
+
     @classmethod
     def get_nearby_businesses(
         cls, user: User, current_lat: float, current_long: float, radius: int = 3000,
@@ -90,6 +149,7 @@ class BusinessUtil:
         local_currency: str | None = None
         vendor_type: str | None = kwargs.get('vendor_type')
         collection_mode: str | None = kwargs.get('collection_mode')
+        exclude_fx_vendors = kwargs.get("exclude_fx_vendors", False)
         if vendor_type:
             try:
                 country = (user.profile.country or "").lower()
@@ -100,6 +160,39 @@ class BusinessUtil:
         point = Point(current_long, current_lat, srid=4326)
         businesses_in_defined_km = Business.objects.none()
         businesses_away_from_user = Business.objects.annotate(distance=Geodistance("geo_location", point))
+        businesses_in_defined_km = cls._progressively_filter_nearest_businesses(
+            point, radius, businesses_away_from_user
+        )
+        # order by liquidity availability first, then distance
+        businesses = businesses_in_defined_km.order_by("-available_liquidity").order_by("distance")
+        nearest_business = businesses_in_defined_km.values("distance").first() or {}
+        businesses = businesses_in_defined_km.annotate(
+                nearest=Case(
+                    When(distance=nearest_business.get("distance"), then=Value(True)),
+                    default=False,
+                    output_field=BooleanField()
+                )
+        )
+        if vendor_type and local_currency:
+            businesses = cls._filter_by_vendor_type(
+                businesses, vendor_type, local_currency
+            )
+
+        if exclude_fx_vendors:
+            businesses = businesses.exclude(vendor_type="FX")
+
+        if collection_mode:
+            businesses = cls._filter_by_collection_mode(businesses, collection_mode)
+        return businesses
+
+
+    @classmethod
+    def _progressively_filter_nearest_businesses(
+        cls, point: Point, radius: int, businesses_away_from_user: QuerySet
+    ) -> QuerySet:
+        """
+        returns businesses that are progressively near the user
+        """
         # resolution 3km, 5km, and or 15km
         # 3km first
         businesses_in_defined_km = businesses_away_from_user.filter(
@@ -117,27 +210,7 @@ class BusinessUtil:
             businesses_in_defined_km = businesses_away_from_user.filter(
                 geo_location__distance_lte=(point, radius)
             )
-        # order by liquidity availability first, then distance
-        businesses = businesses_in_defined_km.order_by("-available_liquidity").order_by("distance")
-        nearest_business = businesses_in_defined_km.values("distance").first() or {}
-        businesses = businesses_in_defined_km.annotate(
-                nearest=Case(
-                    When(distance=nearest_business.get("distance"), then=Value(True)),
-                    default=False,
-                    output_field=BooleanField()
-                )
-        )
-        if vendor_type and local_currency:
-            if vendor_type.upper() == "LOCAL":
-                businesses = businesses.filter(currency=local_currency)
-            elif vendor_type.upper() == "FX":
-                businesses = businesses.exclude(currency=local_currency).filter(
-                    currency__isnull=False
-                ).exclude(currency="")
-
-        if collection_mode:
-            businesses = cls._filter_by_collection_mode(businesses, collection_mode)
-        return businesses
+        return businesses_in_defined_km
 
 
     @classmethod
@@ -158,6 +231,23 @@ class BusinessUtil:
                     MEET_UP_AND_STORE_WALK_IN
                 ]
             )
+        return businesses
+
+
+    @classmethod
+    def _filter_by_vendor_type(
+        cls, businesses: QuerySet, vendor_type: str,
+        local_currency: str | None = None
+    ) -> QuerySet:
+        """
+        filters businesses by their type -- local or FX
+        """
+        if vendor_type.upper() == "LOCAL":
+            businesses = businesses.filter(currency=local_currency)
+        elif vendor_type.upper() == "FX":
+            businesses = businesses.exclude(currency=local_currency).filter(
+                currency__isnull=False
+            ).exclude(currency="")
         return businesses
 
 
@@ -199,7 +289,11 @@ class BusinessUtil:
 
         updated_address = None
         explicit_business_online_status = False
+        supported_currencies = []
         for field, value in data.items():
+            if field.lower() == "supported_currencies" and value is not None:
+                supported_currencies = value
+                continue
             if hasattr(business, field) and value is not None:
                 if field == "address":
                     updated_address = value
@@ -222,6 +316,10 @@ class BusinessUtil:
         if financial_assets is not None:
             WalletUtil.create_or_update_financial_assets(
                 business, financial_assets
+            )
+        if supported_currencies:
+            cls.update_business_supported_currencies(
+                business, supported_currencies
             )
         return business
 
@@ -754,6 +852,7 @@ class BusinessUtil:
         vendor_business_id = data.get("business_id")
         is_v2v = data.get("is_vendor_to_vendor", False)
         proposed_amount = data.get("proposed_amount")
+        proposed_rate: float = data.get("proposed_rate", 0.0)
         vendor_who_accepted_transaction = cls.get_business({"id": vendor_business_id})
         if not vendor_who_accepted_transaction:
             raise CustomException(
@@ -767,6 +866,7 @@ class BusinessUtil:
                 raise CustomException(
                     f"couldn't find a transaction with id: {trxn_id} and ref: {trxn_ref}!"
                 )
+            trxn_type = trxn.txn_type
             if trxn.status != INITIATED:
                 return False
             if is_v2v and not proposed_amount:
@@ -794,6 +894,13 @@ class BusinessUtil:
                     trxn_id=trxn.id, is_v2v=is_v2v
                 )
                 return True
+
+            if trxn_type.upper() == "FX":
+                cls._handle_fx_trxn_acceptance(
+                    trxn, vendor_who_accepted_transaction,
+                    vendor_rate=proposed_rate
+                )
+                return True
             trxn.status = IN_PROGRESS
             trxn.vendor = vendor_who_accepted_transaction.owner
             trxn.business = vendor_who_accepted_transaction
@@ -802,6 +909,35 @@ class BusinessUtil:
             lambda: BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay(trxn_id=trxn.id)
         )
         return True
+
+
+    @classmethod
+    def _handle_fx_trxn_acceptance(
+        cls, trxn: Transaction, vendor: Business,
+        vendor_rate: float = 0.0
+    ) -> Transaction:
+        """
+        vendor accepts trxn opportunity, and proposes rate to the FX client
+        """
+        trxn_meta = trxn.meta or {}
+        if "proposed_rates" not in trxn_meta:
+            trxn_meta["proposed_rates"] = []
+            trxn_meta["proposed_rates"].append({
+                "vendor": {
+                    "id": vendor.id,
+                    "name": vendor.name,
+                },
+                "proposed_rate": vendor_rate,
+                "expiry": (timezone.now() + timezone.timedelta(
+                    minutes=1
+                )).isoformat()
+            })
+            trxn.meta = trxn_meta
+            trxn.save(update_fields=["meta"])
+        BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay(
+            trxn_id=trxn.id
+        )
+        return trxn
 
 
     @classmethod

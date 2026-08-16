@@ -255,3 +255,4 @@ GENERAL_NOTIFICATION_GROUP_NAME = "nearcash_notifications"
 OPPORTUNISTIC_VENDOR_GROUP = "transaction_opportunity"
 
 HMAC_KEY = config("HMAC_KEY", cast=str)
+TWELVEDATA_API_KEY = config("TWELVEDATA_API_KEY", cast=str)

@@ -90,6 +90,10 @@ class BusinessClientType(DjangoObjectType):
         fields = "__all__"
 
 
+class SupportedCurrencyAndLiquidityMap(graphene.InputObjectType):
+    currency = graphene.String()
+    available_liquidity = graphene.Float()
+
 class CreateBusinessInputType(graphene.InputObjectType):
     business_name = graphene.String(required=True)
     description = graphene.String(required=False)
@@ -98,11 +102,13 @@ class CreateBusinessInputType(graphene.InputObjectType):
     address = graphene.String(required=False)
     business_type = graphene.String(required=False)
     available_liquidity = graphene.Float(required=False)
+    supported_currencies = graphene.List(graphene.String, required=False)
 
 class UpdateBusinessInputType(CreateBusinessInputType):
     is_online = graphene.Boolean(required=False)
     business_name = graphene.String(required=False)
     address = graphene.String(required=False)
+    supported_currencies = graphene.List(SupportedCurrencyAndLiquidityMap, required=False)
 
 class RouteInputType(graphene.InputObjectType):
     start_long = graphene.Float(required=True)

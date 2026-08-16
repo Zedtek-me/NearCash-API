@@ -147,8 +147,16 @@ class Query(graphene.ObjectType):
         businesses = BusinessUtil.get_nearby_businesses(
             user, current_lat, current_long,
             vendor_type=kwargs.get("vendor_type"),
-            collection_mode=kwargs.get("collection_mode")
+            collection_mode=kwargs.get("collection_mode"),
+            exclude_fx_vendors=True #we want to exclude FX businesses from the list of businesses sent to the frontend.
         )
+        #users don't have to see FX businesses and their "rates",
+        # as this is different from local currency.
+        #A client user just needs to request the currency he wants,
+        # and the amounts in such currency.
+        #Then, FX businesses who can provide the requested curency and amount
+        # will start to bid for the request, stating their exchange rates;
+        # and the client user can choose the best offer.
         paginated_businesses = PaginationUtil.paginate(
             businesses, kwargs.get("page_number", 1), kwargs.get("page_count", 5)
         )

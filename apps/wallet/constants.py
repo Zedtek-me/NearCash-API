@@ -1,3 +1,5 @@
+from django.conf import settings
+
 MEET_UP = "MEET_UP"
 OUTLET_WALK_IN = "OUTLET_WALK_IN"
 STORE_WALK_IN = "STORE_WALK_IN"
@@ -11,6 +13,7 @@ CARD = "CARD"
 BANK_TRANSFER = "BANK_TRANSFER"
 FX = "FX"
 LOCAL = "LOCAL"
+CASH = "CASH"
 
 COLLECTION_MODES = [
     (MEET_UP, MEET_UP),
@@ -37,3 +40,15 @@ TRANSACTION_TYPES = [
     (FX, FX),
     (LOCAL, LOCAL)
 ]
+
+
+EXCHANGE_RATE_SERVICES = {
+    "TWELVEDATA": {
+        "url": "https://api.twelvedata.com",
+        "api_key": settings.TWELVEDATA_API_KEY,
+        "default_headers": {
+            "Authorization": f"apikey {settings.TWELVEDATA_API_KEY}",
+            "Content-Type": "application/json"
+        }
+    }
+}

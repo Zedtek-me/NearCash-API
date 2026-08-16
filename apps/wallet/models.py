@@ -90,6 +90,12 @@ class Transaction(BaseModel):
         db_table = 'transaction'
         verbose_name = "Transaction"
         verbose_name_plural = "Transactions"
+        indexes = [
+            models.Index(fields=[
+                "txn_ref", "status", "id",
+                "date_created", "last_updated"
+            ], name="txn_ref_status_id_date_created_last_updated_idx")
+        ]
 
 class Wallet(BaseModel):
     """
@@ -152,3 +158,38 @@ class TransactionOpportunity(BaseModel):
         verbose_name = "Transaction Opportunity"
         verbose_name_plural = "Transaction Opportunities"
         db_table = "transaction_opportunity"
+
+
+
+class SupportedCurrency(BaseModel):
+    """
+    For FX businesses, this model records the list of supported currencies
+    that the business can provide to clients.
+    """
+    business = models.ForeignKey(
+        to="core.Business", on_delete=models.CASCADE, null=True,
+        related_name="supported_currencies"
+    )
+    currency_code = models.CharField(
+        max_length=10, null=True, help_text="The ISO 4217 currency code"
+    )
+    available_liquidity = models.FloatField(
+        default=0.0, help_text=(
+            "The amount of this currency that the business has available for transactions"
+        )
+    )
+
+    def __str__(self):
+        return f"{self.business} - {self.currency_code}"
+
+    class Meta(BaseModel.Meta):
+        db_table = "supported_currency"
+        verbose_name = "supported currency"
+        verbose_name_plural = "supported currencies"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["business", "currency_code"],
+                name="unique_business_currency",
+                violation_error_message="This currency is already supported by this business!"
+            )
+        ]

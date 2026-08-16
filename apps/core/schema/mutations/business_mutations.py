@@ -192,6 +192,7 @@ class AcceptTransactionOpportunity(graphene.Mutation):
         business_id = graphene.String()
         is_vendor_to_vendor = graphene.Boolean()
         proposed_amount = graphene.Float()
+        proposed_rate = graphene.Float()#for FX trxns
 
     @login_required
     def mutate(self, info, **kwargs):
