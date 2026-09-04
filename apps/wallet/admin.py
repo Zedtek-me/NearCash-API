@@ -1,6 +1,9 @@
 from django.contrib import admin
 
-from .models import Wallet, Transaction, FinancialAsset, TransactionOpportunity
+from .models import (
+    Wallet, Transaction, FinancialAsset,
+    TransactionOpportunity, SupportedCurrency
+)
 
 @admin.register(Wallet)
 class WalletAdmin(admin.ModelAdmin):
@@ -36,8 +39,28 @@ class TransactionOpportunityAdmin(admin.ModelAdmin):
         "date_created", "last_updated"
     ]
     list_filter = ["business", "date_created", "last_updated"]
-    search = [
+    search_fields = [
         "business__name__icontains", "business__owner__email__icontains",
         "business__owner__first_name__icontains", "business__owner__last_name__icontains",
         "transaction__amount", "transaction__txn_ref",
+    ]
+
+
+@admin.register(SupportedCurrency)
+class SupportedCurrencyAdmin(admin.ModelAdmin):
+    list_display = [
+        "id", "currency_code", "available_liquidity",
+        "business", "date_created", "last_updated"
+    ]
+    list_filter = [
+        "currency_code", "date_created", "last_updated"
+    ]
+    list_display_links = ["id", "currency_code", "business"]
+    search_fields = [
+        "business__name__icontains", "currency_code__icontains",
+        "available_liquidity__icontains",
+        "business__owner__name__icontains", "business__owner__email__icontains"
+    ]
+    fields = [
+        "currency_code", "available_liquidity", "business",
     ]

@@ -44,6 +44,23 @@ class BusinessAsyncOperations:
             return False
 
         # send websocket notification to vendor before other async operations
+
+        if txn.txn_type == "FX":
+            trxn_meta = txn.meta or {}
+            currency_pair: dict = trxn_meta.get("currency_pair", {})
+            source_currency = currency_pair.get("source_currency_code")
+            destination_currency = currency_pair.get("destination_currency_code") or txn.currency
+            logger.debug(f"source currency: {source_currency}\n destination currency: {destination_currency}")
+            assert (source_currency and destination_currency), \
+                "source and destination currencies must be available!"
+            current_market_rate = TransactionUtil.get_fx_market_rate_for_pair(
+                source_curr=source_currency, destination_curr=destination_currency
+            )
+            trxn_meta["currency_market_rate"] = current_market_rate
+            txn.meta = trxn_meta
+            txn.save(update_fields=["meta"])
+            return NotificationUtil.broadcast_fx_trxn_request_notification(txn)
+
         NotificationUtil.send_socket_notification(txn)
         txn_client: User | None = txn.client
         BusinessAsyncOperations.update_client_last_patronized(
@@ -81,6 +98,9 @@ class BusinessAsyncOperations:
         """
         locks trxn amount away from total liquidity
         """
+        if trxn.txn_type.lower() == "fx":
+            # TODO: implement a more robust way to handle FX transactions and their liquidity management
+            return trxn
         business_current_total_liquidity = business.available_liquidity or 0.0
         if not business_current_total_liquidity or business_current_total_liquidity < 1:
             logger.warning(f"business is out of liquidity for the day!")
@@ -155,7 +175,7 @@ class BusinessAsyncOperations:
 
     @classmethod
     def get_txn_info_for_async_ops(
-        cls, txn, skip_error: bool = False, for_vendor: bool = True
+        cls, txn: Transaction, skip_error: bool = False, for_vendor: bool = True
     ) -> Dict[str, int | Any]:
         from apps.auths.models import User
 
@@ -164,7 +184,9 @@ class BusinessAsyncOperations:
             raise CustomException(
                 f"transaction with id: {txn.id} has no vendor attached!"
             )
-
+        currency_pair: dict = txn.meta.get("currency_pair") or {}
+        source_curr = currency_pair.get("source_currency_code")
+        destination_curr = currency_pair.get("destination_currency_code")
         txn_info = {
                     "txn_id": txn.id,
                     "txn_ref": txn.txn_ref,
@@ -176,7 +198,10 @@ class BusinessAsyncOperations:
                     "vendor_name": txn.business and txn.business.name or None,
                     "client_name": txn.client.full_name,
                     "client_phone_number": txn.client.phone_number,
-                    "vendor_phone_number": vendor and vendor.phone_number or None
+                    "vendor_phone_number": vendor and vendor.phone_number or None,
+                    "txn_type": txn.txn_type,
+                    "source_currency": source_curr,
+                    "destination_curr": destination_curr
                 }
 
         if not for_vendor:
@@ -190,8 +215,16 @@ class BusinessAsyncOperations:
                         "client_name": txn.client.full_name,
                         "client_phone_number": txn.client.phone_number,
                         "vendor_phone_number": txn.vendor.phone_number if txn.vendor else "",
-                        "client_current_location": txn.meta.get("client_current_location", {})
+                        "client_current_location": txn.meta.get("client_current_location", {}),
+                        "txn_type": txn.txn_type,
+                        "source_currency": source_curr,
+                        "destination_curr": destination_curr,
                     }
+        txn_info.update({
+            "proposed_amounts": txn.meta.get("proposed_amounts"),
+            "proposed_rates": txn.meta.get("proposed_rates"),
+            "currency_market_rate": txn.meta.get("currency_market_rate")
+        })
         return txn_info
 
 
@@ -224,13 +257,21 @@ class BusinessAsyncOperations:
         client: User = trxn.client
         trxn_meta: dict = trxn.meta or {}
         is_v2v = trxn_meta.get("is_v2v")
-        vendors_have_proposed = bool(trxn_meta.get("proposed_amounts"))
+        vendors_have_proposed = bool(
+            trxn_meta.get("proposed_amounts") or
+            trxn_meta.get("proposed_rates")
+        )
+        trxn_type = (trxn.txn_type or "LOCAL").title()
 
-        if is_v2v and vendors_have_proposed:
+        if (is_v2v or trxn_type != "Local") and vendors_have_proposed:
             return
 
         channel_layer = get_channel_layer()
-        trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn, for_vendor=False)
+        trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
+            trxn, for_vendor=False, skip_error=(
+                is_v2v or trxn_type != "Local"
+            )
+        )
         client_message = {
             "type": "send.notification",
             "message": {
@@ -324,6 +365,7 @@ class BusinessAsyncOperations:
         from apps.wallet.models import TransactionOpportunity
 
         trxn = TransactionUtil.get_transaction(id=trxn_id)
+        trxn_type = trxn.txn_type or "LOCAL"
 
         # notify client of transaction acceptance
         custom_msg_type = None
@@ -335,17 +377,27 @@ class BusinessAsyncOperations:
             custom_msg_type = custom_title = "Proposed Amount"
             custom_body = (
                 f"{'Some' if len(vendors_who_proposed) > 1 else 'A'} vendor{'s' if len(vendors_who_proposed) > 1 else ''} "
-                f"proposed {'their' if len(vendors_who_proposed) > 1 else 'an'} amount for this request.\n"
+                f"proposed {'their' if len(vendors_who_proposed) > 1 else 'an'} amount{'s' if len(vendors_who_proposed) > 1 else ''} for this request.\n"
+            )
+        if trxn_type != "LOCAL":
+            trxn_meta = trxn.meta or {}
+            proposed_rates = trxn_meta.get("proposed_rates", [])
+            more_than_one = len(proposed_rates) > 1
+            custom_msg_type = custom_title = "Proposed Rate"
+            custom_body = (
+                f"{'Some ' if more_than_one else 'A'} vendor{'s' if more_than_one else ''} "
+                f"proposed {'their ' if more_than_one else 'a'} rate{'s' if more_than_one else ''} already"
             )
             # decide later whether to schedule a task to notify each proposing vendor 
             # about expiry if the initiating vendor does not accept their proposal within
             # within the expiry time earlier set when proposing.
+        skip_trxn_record = is_v2v or trxn_type != "LOCAL"
         NotificationUtil.send_socket_notification(
                 txn=trxn, for_vendor_notif=False,
                 custom_msg_type=custom_msg_type,
                 custom_title=custom_title,
                 custom_body=custom_body,
-                skip_record=is_v2v
+                skip_record=skip_trxn_record
         )
         if not is_v2v:
             all_opportunities = TransactionOpportunity.objects.filter(
@@ -464,10 +516,10 @@ class BusinessAsyncOperations:
         if custom_msg_body:
             body = custom_msg_body
         if nearby_vendors and len(nearby_vendors) > 0:
-            owner_businesses = cls._get_owners_and_businesses(nearby_vendors)
+            owner_businesses = cls.get_owners_and_businesses(nearby_vendors)
 
             for owner, businesses in owner_businesses.items():
-                trxn_opportunity_msg = cls._update_trxn_opportunity_msg(
+                trxn_opportunity_msg = cls.update_trxn_opportunity_msg(
                     owner, trxn_opportunity_msg, businesses
                 )
 
@@ -485,7 +537,7 @@ class BusinessAsyncOperations:
 
 
     @classmethod
-    def _get_owners_and_businesses(
+    def get_owners_and_businesses(
         cls, businesses: List[Business]
     ) -> dict:
         owners_and_businesses = {}
@@ -545,7 +597,7 @@ class BusinessAsyncOperations:
 
 
     @classmethod
-    def _update_trxn_opportunity_msg(
+    def update_trxn_opportunity_msg(
         cls, owner: User, trxn_opportunity_msg: dict,
         businesses: list[Business]
     ) -> dict:
@@ -563,7 +615,7 @@ class BusinessAsyncOperations:
         bind=True, name="notify-proposing-vendor-of-acceptance"
     )
     def notify_proposing_vendor_of_acceptance(
-        self, trxn_id: IndentationError
+        self, trxn_id: str | int
     ) -> None:
         """
         informs the proposing vendor whose proposal was accepted by the initiating vendor

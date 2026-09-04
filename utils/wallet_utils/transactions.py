@@ -1,6 +1,7 @@
 import uuid
 
 from django.db.models import Q
+from django.conf import settings
 
 from apps.wallet.models import Transaction
 from apps.auths.models import User
@@ -9,6 +10,7 @@ from apps.notification.email.app_emails import EmailService
 from utils.helpers.exception import CustomException
 from utils.helpers.logs import logger
 from utils.helpers.general import generate_random_codes
+from utils.https.client import Client
 
 from apps.wallet.constants import (
     IN_PROGRESS, CANCELLED,
@@ -63,10 +65,11 @@ class TransactionUtil:
             raise CustomException("Transaction not found.")
 
         status = data.get("status", "")
+        txn_type = txn.txn_type
         if status and not isinstance(status, str):
             status = status.value.upper()
 
-        if status == IN_PROGRESS and user.id != txn.vendor.id:
+        if txn_type != "FX" and status == IN_PROGRESS and user.id != txn.vendor.id:
             raise CustomException(
                 "Only the vendor can update the transaction to IN_PROGRESS."
             )
@@ -171,3 +174,29 @@ class TransactionUtil:
             "context": context
         })
         # TODO: also send confirmation code via sms
+
+
+    @classmethod
+    def get_fx_market_rate_for_pair(
+        cls, source_curr: str = "NGN",
+        destination_curr: str = "USD",
+        provider: str = "twelvedata"
+    ) -> float:
+        """
+        fetches the curent market rate for the given currency pair
+        """
+        from apps.wallet.services import WalletService
+
+        credentials = WalletService.get_exchange_rate_service(provider)
+        url = credentials.get("url")
+        headers = credentials.get("default_headers", {})
+        client = Client(url, headers=headers)
+        response = client.get(
+                    "/exchange_rate",
+                    params={"symbol": f"{destination_curr}/{source_curr}"}
+                )
+        logger.debug(f"exchange rate response::: {response}")
+        rate: float = response.get("rate", 0.0)
+        if not rate:
+            return 0.0
+        return round(rate, 2)

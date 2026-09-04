@@ -1,3 +1,5 @@
+from typing import Dict, Any, List
+
 from asgiref.sync import async_to_sync
 from celery import shared_task
 
@@ -20,7 +22,7 @@ from apps.wallet.constants import (
 )
 from apps.payment.services import PaymentService
 
-from utils.helpers.logs import logger
+from utils.helpers.logs import logger, log_message
 from utils.helpers.exception import CustomException
 from utils.helpers.general import get_two_formatted_datetime
 from utils.wallet_utils.transactions import TransactionUtil
@@ -199,10 +201,11 @@ class NotificationUtil:
             ]:
                 return False
 
+            is_v2v = (txn.meta or {}).get("is_v2v", False)
+            is_fx = txn.txn_type.upper() != "LOCAL"
             txn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
-                txn, for_vendor=for_vendor_notif
+                txn, for_vendor=for_vendor_notif, skip_error=(is_fx or is_v2v)
             )
-            is_v2v = txn.meta.get("is_v2v", False)
             txn_status = txn.status.title()
             txn_status = "Approved" if txn_status == "In_Progress" else txn_status
             vendor: User = txn.vendor
@@ -215,7 +218,7 @@ class NotificationUtil:
                 txn, client, for_vendor_notif, business,
                 custom_title=custom_title, custom_body=custom_body
             )
-            if (txn_status == "Approved" or is_v2v) and mode_of_transfer == BANK_TRANSFER:
+            if (txn_status == "Approved" or is_v2v or is_fx) and mode_of_transfer == BANK_TRANSFER:
                 #generate virtual account for the client to pay into
                 try:
                     txn_info = TransactionUtil.update_trxn_info_with_account_details(txn, txn_info, client)
@@ -231,6 +234,11 @@ class NotificationUtil:
             if is_v2v:
                 txn_info.update({
                     "proposed_amounts": txn.meta.get("proposed_amounts", []),
+                })
+            if is_fx:
+                txn_info.update({
+                    "proposed_rates": txn.meta.get("proposed_rates", []),
+                    "currency_market_rate": txn.meta.get("currency_market_rate") or 0.0
                 })
             if not skip_record:
                 cls.create_notification_async.delay(
@@ -312,7 +320,7 @@ class NotificationUtil:
         user_id = None
         business_id = None
 
-        if for_vendor_notif:
+        if for_vendor_notif and business:
             business_id = business.id
         else:
             user_id = client.id
@@ -371,3 +379,121 @@ class NotificationUtil:
     ) -> dict:
         trxn_info = TransactionUtil.populate_trxn_info_with_default_account_detail(trxn_info)
         return trxn_info
+
+
+    @classmethod
+    def broadcast_fx_trxn_request_notification(
+        cls, trxn: Transaction
+    ) -> bool:
+        """
+        broadcasts foreign transaction request to available and nearby FX vendors
+        """
+        from background_tasks.core.tasks import BusinessAsyncOperations
+        from utils.core_utils.business_utils import BusinessUtil
+
+
+        client: User = trxn.client
+        client_db_loc = BusinessUtil.fetch_existing_user_location(client, location_type="Clietnt")
+        client_current_coordinates = (
+            trxn.meta.get("client_current_coordinates") or
+            (client_db_loc and {
+                "latitude": client_db_loc.location.y,
+                "longitude": client_db_loc.location.x
+            })
+        )
+        if not client_current_coordinates:
+            logger.error(
+                "client's current coordinates not found in transaction meta. "
+                "Unable to broadcast FX transaction request."
+            )
+            # TODO: send an error socket message here too.
+            return False
+
+        trxn_info: Dict[str, Any] = BusinessAsyncOperations.get_txn_info_for_async_ops(
+            trxn, skip_error=True
+        )
+        trxn_info["currency_market_rate"] = trxn.meta.get("currency_market_rate")
+        fx_vendor_businesses = BusinessUtil.get_nearby_businesses(
+            client,
+            current_lat=client_current_coordinates.get("latitude"),
+            current_long=client_current_coordinates.get("longitude"),
+            vendor_type=trxn.txn_type.strip().upper(),
+        )
+        fx_vendor_businesses = list(BusinessUtil.get_vendors_specifically_for_given_fx_currency(
+            fx_vendor_businesses, trxn
+        ))
+        logger.debug(f"nearby FX vendors found for the given currency: {fx_vendor_businesses}")
+        if not fx_vendor_businesses:
+            log_message(
+                "No nearby FX vendors found for the given currency to broadcast transaction request.",
+                level="warning",
+                exc_info=True
+            )
+            user_queue = client.user_queue or ""
+            trxn_info.update({
+                "message": "No nearby FX vendors found to process your transaction request."
+            })
+            cls.send_msg(
+                user_queue, {
+                    "message_type": "No Nearby FX Vendors",
+                    "txn_info": trxn_info
+                }
+            )
+            return False
+        fx_trxn_msg_fmt = {
+            "message_type": "New FX Transaction Interest",
+            "txn_info": trxn_info
+        }
+        currency_pair = trxn.meta.get("currency_pair", {})
+        source_curr = currency_pair.get("source_currency_code")
+        destination_curr = currency_pair.get("destination_currency_code")
+        vendors_and_their_businesses: Dict[User, List[Business]] = BusinessAsyncOperations\
+            .get_owners_and_businesses(fx_vendor_businesses)
+        for vendor, businesses in vendors_and_their_businesses.items():
+            fx_trxn_msg_fmt = BusinessAsyncOperations.update_trxn_opportunity_msg(
+                vendor, fx_trxn_msg_fmt, businesses
+            )
+            user_queue = vendor.user_queue or ""
+            socket_msg = fx_trxn_msg_fmt
+            cls.send_msg(user_queue, socket_msg)
+            # register FX notification for FX vendor
+            # NOTE: This can be pushed to a separate worker for speed.
+            for business in businesses:
+                cls.record_notification(
+                    title=fx_trxn_msg_fmt["message_type"],
+                    body=(
+                        f"{client.full_name} would like to exchange their "
+                        f"{source_curr} for some "
+                        f"{trxn.amount}{destination_curr} from you; "
+                        "can you fulfil this request?"
+                    ),
+                    entity=business
+                )
+        return True
+
+
+    @classmethod
+    def send_msg(
+        cls, queue_name: str, message: str | dict | Any,
+        handler_type: str = "send.notification"
+    ) -> bool:
+        """
+        custom util method to send message to a specific channel name or group.
+        it saves from having to get the channel layer and call async_to_sync() every time
+        """
+        try:
+            channel_layer = get_channel_layer()
+            formatted_msg = {
+                "type": handler_type,
+                "message": message
+            }
+            async_to_sync(
+                channel_layer.group_send
+            )(
+                queue_name,
+                formatted_msg
+            )
+        except Exception as e:
+            logger.exception(f"exception when sending message to {queue_name} >>>> {e}")
+            return False
+        return True

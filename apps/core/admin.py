@@ -17,6 +17,7 @@ class BusinessAdmin(admin.ModelAdmin):
         'country__icontains', 'currency', "business_type__icontains"
     )
     list_filter = ('date_created', 'last_updated', "business_type")
+    list_display_links = ("id", "name", "owner")
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
