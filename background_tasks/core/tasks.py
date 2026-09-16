@@ -634,17 +634,24 @@ class BusinessAsyncOperations:
                 logger.error(f"initiating vendor hasn't accepted any vendor proposal for trxn with id {trxn.id} yet!")
                 return
 
+            trxn_type: str = trxn.txn_type
             vendor_user = trxn.vendor
             channel_layer = get_channel_layer()
             user_queue = vendor_user.user_queue
-            trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(trxn, for_vendor=False)
+            trxn_info = BusinessAsyncOperations.get_txn_info_for_async_ops(
+                trxn, for_vendor=False, skip_error=True
+            )
+            message_type = "Proposed Amount Accepted!"
+            if trxn_type.lower() != "local":
+                message_type = message_type.replace("Amount", "Rate")
             acceptance_message = {
                 "type": "send.notification",
                 "message": {
-                    "message_type": "Proposed Amount Accepted!",
+                    "message_type": message_type,
                     "txn_info": trxn_info
                 }
             }
+            # TODO: record notification msg as a background task
             async_to_sync(channel_layer.group_send)(
                 user_queue, acceptance_message
             )

@@ -11,6 +11,8 @@ from apps.core.schema.types.client_types import (
     DelayedTransactionResponseEnum
 )
 
+from apps.core.services import ClientService
+
 from utils.core_utils.business_utils import BusinessUtil
 
 
@@ -57,6 +59,27 @@ class RespondToDelayedTransaction(graphene.Mutation):
             message="Response acknowledged!"
         )
 
+class AcceptProposedFXRate(graphene.Mutation):
+    message = graphene.String()
+    transaction = graphene.Field(TransactionType)
+
+    class Arguments:
+        txn_id = graphene.String(required=True)
+        rate = graphene.Float(required=True)
+        vendor_business_id = graphene.String(required=True)
+
+    @login_required
+    def mutate(self, info, **data):
+        user = info.context.user
+        txn_id = data.get("txn_id")
+        transaction = ClientService.accept_proposed_fx_rate(
+            user, txn_id,data.get("rate"),
+            data.get("vendor_business_id")
+        )
+        return AcceptProposedFXRate(
+            message="Proposed FX rate accepted successfully.",
+            transaction=transaction
+        )
 
 class Mutation(graphene.ObjectType):
     initiate_transaction = InitiateTransaction.Field(
@@ -64,4 +87,7 @@ class Mutation(graphene.ObjectType):
     )
     respond_to_delayed_transaction = RespondToDelayedTransaction.Field(
         description="Let's a client user take action about his trxn being delayed"
+    )
+    accept_proposed_fx_rate = AcceptProposedFXRate.Field(
+        description="Allows a client to accept a proposed FX rate for a transaction."
     )
