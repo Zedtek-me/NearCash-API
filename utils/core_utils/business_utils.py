@@ -809,7 +809,7 @@ class BusinessUtil:
                 )
 
             case "cancel":
-                TransactionUtil.update_txn_status(client, {"status": CANCELLED})
+                TransactionUtil.update_txn_status(client, {"txn_id": trxn_id, "status": CANCELLED})
             case _:
                 return True
         return True

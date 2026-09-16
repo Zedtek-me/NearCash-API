@@ -16,12 +16,14 @@ from apps.wallet.constants import (
     IN_PROGRESS, CANCELLED,
     FULFILLED, TXN_STATUSES
 )
+from apps.wallet.services import CurrencyService
 
 from celery import shared_task
 from near_cash.celery import BaseTask
 
 class TransactionUtil:
     """all things txn related"""
+    currency_service = CurrencyService()
 
     @classmethod
     def generate_txn_reference(cls, prefix: str = "NCSH") -> str:
@@ -185,18 +187,8 @@ class TransactionUtil:
         """
         fetches the curent market rate for the given currency pair
         """
-        from apps.wallet.services import WalletService
+        from apps.wallet.services import CurrencyService
 
-        credentials = WalletService.get_exchange_rate_service(provider)
-        url = credentials.get("url")
-        headers = credentials.get("default_headers", {})
-        client = Client(url, headers=headers)
-        response = client.get(
-                    "/exchange_rate",
-                    params={"symbol": f"{destination_curr}/{source_curr}"}
-                )
-        logger.debug(f"exchange rate response::: {response}")
-        rate: float = response.get("rate", 0.0)
-        if not rate:
-            return 0.0
-        return round(rate, 2)
+        return CurrencyService.get_exchange_rate(
+            source_curr, destination_curr, provider=provider
+        )

@@ -5,6 +5,7 @@ from googlemaps import Client as GoogleMapClient
 
 from django.conf import settings
 from django.utils import timezone
+from django.db import transaction
 
 from interfaces.general.location import LocationInterface
 from utils.helpers.logs import logger
@@ -16,9 +17,8 @@ from apps.wallet.models import (
 )
 from apps.wallet.services import WalletService
 from apps.wallet.constants import (
-    FX, LOCAL, BANK_TRANSFER, CARD, CASH
+    FX, LOCAL, BANK_TRANSFER, CARD, CASH, IN_PROGRESS
 )
-
 
 
 
@@ -219,11 +219,21 @@ class ClientService:
         from apps.wallet.schema.types.wallet import TransferModeEnum
         from utils.wallet_utils.transactions import TransactionUtil
 
-        amount_requested = data.get("amount_to_withdraw", 0.0)
+        amount_tendered = data.get("amount_to_withdraw", 0.0)
+        source_currency = data.get("source_currency_code")
+        destination_currency = data.get("destination_currency_code")
+        assert (
+            source_currency and destination_currency
+        ), "Source and destination currencies must be provided for FX transactions!"
+        destination_currency_equiv = TransactionUtil.currency_service\
+                    .convert_tendered_amount_to_dest_curr(
+                        amount_tendered, source_currency,
+                        destination_currency
+                    )
         transfer_mode = data.get("transfer_mode", TransferModeEnum.BANK_TRANSFER)
-        if not amount_requested or float(amount_requested) <= 0:
+        if not amount_tendered or float(amount_tendered) <= 0:
             raise CustomException(
-                message=f"please specify an amount greater than {amount_requested}"
+                message=f"please specify an amount greater than {amount_tendered}"
             )
         if not isinstance(transfer_mode, str):
             transfer_mode = transfer_mode.value
@@ -237,9 +247,9 @@ class ClientService:
             "client": client,
             "vendor": None,
             "asset": None,
-            "amount": amount_requested,
+            "amount": destination_currency_equiv,
             "charge": 0.0,
-            "currency": data.get("destination_currency_code", "USD"),
+            "currency": destination_currency or "USD",
             "business": None,
             "collection_mode": data.get("collection_mode").value,
             "meta": {
@@ -249,8 +259,8 @@ class ClientService:
                 },
                 "txn_type": FX,
                 "currency_pair": {
-                    "source_currency_code": data.get("source_currency_code"),
-                    "destination_currency_code": data.get("destination_currency_code")
+                    "source_currency_code": source_currency,
+                    "destination_currency_code": destination_currency
                 }
             },
             "txn_type": FX
@@ -372,3 +382,66 @@ class ClientService:
         return cls.prepare_client_txn_data(
             client, data, asset, extra_charge=extra_charge_data
         )
+
+
+    @classmethod
+    def accept_proposed_fx_rate(
+        cls, client: User, trxn_id: str, rate: float,
+        business_id: int | str
+    ) -> Transaction:
+        """
+        from the list of proposed rates by fx vendors,
+        this methods allows the client accept a rate.
+        """
+        from utils.wallet_utils.transactions import TransactionUtil
+        from utils.core_utils.business_utils import BusinessUtil
+        from background_tasks.core.tasks import BusinessAsyncOperations
+
+        trxn = TransactionUtil.get_transaction(txn_id=trxn_id, raise_exc=True)
+        vendor_who_proposed_rate = BusinessUtil.get_business({"id": business_id})
+        valid, exception_msg = cls._validate_fx_proposal_acceptance_data(
+                    client, trxn_id, rate, business_id,
+                    trxn, vendor_who_proposed_rate
+                )
+        if not valid:
+            raise CustomException(
+                message=exception_msg
+            )
+        with transaction.atomic():
+            trxn.charge = rate
+            trxn.business = vendor_who_proposed_rate
+            trxn.vendor = vendor_who_proposed_rate.owner
+            trxn.status = IN_PROGRESS
+            trxn.save()
+        transaction.on_commit(
+            lambda : BusinessAsyncOperations\
+                .notify_proposing_vendor_of_acceptance\
+                .delay(
+                    trxn_id=trxn.id
+                )
+        )
+        return trxn
+
+    @classmethod
+    def _validate_fx_proposal_acceptance_data(
+        cls, client: User, trxn_id: int | str,
+        rate: float, business_id: int | str,
+        trxn: Transaction | None = None,
+        business_who_proposed = None
+    ) -> tuple[bool, str]:
+        """
+        validates data for fx transaction proposal
+        acceptance
+        """
+        if not trxn:
+            message = f"Transaction with ID {trxn_id} not found."
+            return False, message
+        if trxn.client.id != client.id:
+            message = "You are not authorized to accept the FX rate for this transaction."
+            return False, message
+        if not rate or float(rate) <= 0:
+            message = "Please specify a valid FX rate greater than {}"
+        if not business_who_proposed:
+            message = f"Cannot find vendor with the given ID: {business_id}"
+            return False, message
+        return True, ""
