@@ -260,7 +260,9 @@ class ClientService:
                 "txn_type": FX,
                 "currency_pair": {
                     "source_currency_code": source_currency,
-                    "destination_currency_code": destination_currency
+                    "destination_currency_code": destination_currency,
+                    "source_currency_amount": amount_tendered,
+                    "destination_currency_amount": destination_currency_equiv
                 }
             },
             "txn_type": FX
@@ -397,7 +399,11 @@ class ClientService:
         from utils.core_utils.business_utils import BusinessUtil
         from background_tasks.core.tasks import BusinessAsyncOperations
 
-        trxn = TransactionUtil.get_transaction(txn_id=trxn_id, raise_exc=True)
+        trxn = TransactionUtil.get_transaction(id=trxn_id)
+        if not trxn:
+            raise CustomException(
+                message="Invalid Transaction ID given!"
+            )
         vendor_who_proposed_rate = BusinessUtil.get_business({"id": business_id})
         valid, exception_msg = cls._validate_fx_proposal_acceptance_data(
                     client, trxn_id, rate, business_id,
@@ -414,11 +420,9 @@ class ClientService:
             trxn.status = IN_PROGRESS
             trxn.save()
         transaction.on_commit(
-            lambda : BusinessAsyncOperations\
-                .notify_proposing_vendor_of_acceptance\
-                .delay(
-                    trxn_id=trxn.id
-                )
+            lambda : cls.post_rate_acceptance_callback(
+                trxn, rate
+            )
         )
         return trxn
 
@@ -445,3 +449,41 @@ class ClientService:
             message = f"Cannot find vendor with the given ID: {business_id}"
             return False, message
         return True, ""
+
+
+    @classmethod
+    def _update_trxn_amount_with_accepted_rate(
+        cls, trxn: Transaction, accepted_rate: float | int | None = 0
+    ) -> Transaction:
+        """
+        updates transaction amount based on the rate
+        accepted from a proposing vendor
+        """
+        currency_pair = trxn.meta.get("currency_pair", {})
+        source_amount = currency_pair.get("amount_demanded")
+        accepted_rate = accepted_rate or trxn.charge
+        if source_amount:
+            trxn.amount = float(
+                source_amount // accepted_rate
+            )
+            trxn.save(update_fields=["amount"])
+        return trxn
+
+    @classmethod
+    def post_rate_acceptance_callback(
+        cls, trxn: Transaction, rate: float | int | None = 0
+    ) -> bool:
+        """
+        performs needed post acceptance tasks
+        """
+        from background_tasks.core.tasks import BusinessAsyncOperations
+
+        cls._update_trxn_amount_with_accepted_rate(
+            trxn, rate
+        )
+        BusinessAsyncOperations\
+                .notify_proposing_vendor_of_acceptance\
+                .delay(
+                    trxn_id=trxn.id
+                )
+        return True

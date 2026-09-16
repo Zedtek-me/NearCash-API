@@ -651,6 +651,7 @@ class BusinessAsyncOperations:
                     "txn_info": trxn_info
                 }
             }
+            # TODO: record notification msg as a background task
             async_to_sync(channel_layer.group_send)(
                 user_queue, acceptance_message
             )

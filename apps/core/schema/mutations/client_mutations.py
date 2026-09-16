@@ -72,7 +72,10 @@ class AcceptProposedFXRate(graphene.Mutation):
     def mutate(self, info, **data):
         user = info.context.user
         txn_id = data.get("txn_id")
-        transaction = ClientService.accept_proposed_fx_rate(user, txn_id, data.get("rate"), data.get("vendor_business_id"))
+        transaction = ClientService.accept_proposed_fx_rate(
+            user, txn_id,data.get("rate"),
+            data.get("vendor_business_id")
+        )
         return AcceptProposedFXRate(
             message="Proposed FX rate accepted successfully.",
             transaction=transaction
