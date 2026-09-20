@@ -94,7 +94,7 @@ class Transaction(BaseModel):
             models.Index(fields=[
                 "txn_ref", "status", "id",
                 "date_created", "last_updated"
-            ], name="txn_ref_status_id_date_created_last_updated_idx")
+            ], name="txn_ref_status_id_date_idx")
         ]
 
 class Wallet(BaseModel):
