@@ -68,7 +68,6 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
         )(
             self.user, _all=True, skip_error=True
         )
-        # await self.send_json(f"welcome {self.user.email}!")
 
     async def disconnect(self, close_code):
         """Handle WebSocket disconnections."""
@@ -102,7 +101,6 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                 handled_response = await handler(**content)
             response: dict = self.MESSAGE_TYPE_HANDLERS.get(msg_type, {}).get("response", {})
         except Exception as e:
-            logger.exception(f"Error occured:::::: {e}")
             await self.send_json({
                 "message_type": "error",
                 "error_context": msg_type,
