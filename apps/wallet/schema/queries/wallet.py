@@ -6,8 +6,11 @@ from graphql_jwt.decorators import login_required
 
 from apps.wallet.schema.types.wallet import (
     FinancialAssetType, TransactionType, WalletType,
-    TransactionListType
+    TransactionListType, ExchangeRangeType
 )
+
+from apps.wallet.services import CurrencyService
+from apps.wallet.constants import ExchangeRateOutPutClass
 
 from utils.helpers.exception import CustomException
 from utils.helpers.logs import logger
@@ -47,6 +50,10 @@ class Query(graphene.ObjectType):
     transaction = graphene.Field(
         TransactionType,
         transaction_id=graphene.String(required=True)
+    )
+    get_exchange_rate = graphene.Field(
+        ExchangeRangeType,
+        currency_pair=graphene.String(required=True)
     )
 
     @login_required
@@ -166,3 +173,29 @@ class Query(graphene.ObjectType):
         txn_id = kwargs.get("transaction_id")
         txn = TransactionUtil.get_transaction(id=txn_id)
         return txn
+
+
+    @login_required
+    def resolve_get_exchange_rate(
+        self, info, **kwargs
+    ):
+        """
+        resolves current market rate
+        for the given pair
+        """
+        currency_pair = kwargs.get("currency_pair")
+        if not (currency_pair and isinstance(currency_pair, str)):
+            raise CustomException(
+                message=(
+                    "Currency pair given is invalid! "
+                    "Appropriate format is like 'DEST_CURR/SOURCE_CURR' -- e.g USD/NGN."
+                )
+            )
+        destination_curr, source_curr = currency_pair.split("/")
+        rate = CurrencyService.get_exchange_rate(
+            source_curr=source_curr, destination_curr=destination_curr
+        )
+        return ExchangeRateOutPutClass(
+            rate=rate,
+            symbol=currency_pair
+        )

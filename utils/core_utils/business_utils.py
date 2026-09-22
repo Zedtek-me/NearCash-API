@@ -147,7 +147,7 @@ class BusinessUtil:
         """returns all the businesses that are within a radius of the current location"""
 
         local_currency: str | None = None
-        vendor_type: str | None = kwargs.get('vendor_type')
+        vendor_type: str | None = kwargs.pop('vendor_type', None)
         collection_mode: str | None = kwargs.get('collection_mode')
         exclude_fx_vendors = kwargs.get("exclude_fx_vendors", False)
         if vendor_type:
@@ -179,7 +179,7 @@ class BusinessUtil:
             )
 
         if exclude_fx_vendors:
-            businesses = businesses.exclude(vendor_type="FX")
+            businesses = businesses.exclude(business_type="FX")
 
         if collection_mode:
             businesses = cls._filter_by_collection_mode(businesses, collection_mode)

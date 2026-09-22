@@ -1,4 +1,5 @@
 from django.conf import settings
+from dataclasses import dataclass
 
 MEET_UP = "MEET_UP"
 OUTLET_WALK_IN = "OUTLET_WALK_IN"
@@ -32,7 +33,8 @@ TXN_STATUSES = [
 
 TRANSFER_MODES = [
     (CARD, CARD),
-    (BANK_TRANSFER, BANK_TRANSFER)
+    (BANK_TRANSFER, BANK_TRANSFER),
+    (CASH, CASH)
 ]
 
 
@@ -52,3 +54,9 @@ EXCHANGE_RATE_SERVICES = {
         }
     }
 }
+
+
+@dataclass
+class ExchangeRateOutPutClass:
+    rate: float
+    symbol: str

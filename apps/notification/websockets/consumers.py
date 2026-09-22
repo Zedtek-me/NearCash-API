@@ -89,7 +89,6 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
     async def receive_json(self, content: dict, *args, **kwargs):
         """Handle incoming messages."""
 
-        logger.debug(f"content gotten on websocket msg receiver::::::::: {content}")
         msg_type = content.pop('message_type', "")
 
         # handle message type
@@ -103,7 +102,6 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
                 handled_response = await handler(**content)
             response: dict = self.MESSAGE_TYPE_HANDLERS.get(msg_type, {}).get("response", {})
         except Exception as e:
-            # await sync_to_async(time.sleep)(5) #for debugging
             logger.exception(f"Error occured:::::: {e}")
             await self.send_json({
                 "message_type": "error",

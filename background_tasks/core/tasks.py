@@ -388,9 +388,9 @@ class BusinessAsyncOperations:
                 f"{'Some ' if more_than_one else 'A'} vendor{'s' if more_than_one else ''} "
                 f"proposed {'their ' if more_than_one else 'a'} rate{'s' if more_than_one else ''} already"
             )
-            # decide later whether to schedule a task to notify each proposing vendor 
-            # about expiry if the initiating vendor does not accept their proposal within
-            # within the expiry time earlier set when proposing.
+        # decide later whether to schedule a task to notify each proposing vendor 
+        # about expiry if the initiating vendor does not accept their proposal within
+        # within the expiry time earlier set when proposing.
         skip_trxn_record = is_v2v or trxn_type != "LOCAL"
         NotificationUtil.send_socket_notification(
                 txn=trxn, for_vendor_notif=False,
