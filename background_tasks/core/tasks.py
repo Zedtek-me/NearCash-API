@@ -56,7 +56,7 @@ class BusinessAsyncOperations:
             current_market_rate = TransactionUtil.get_fx_market_rate_for_pair(
                 source_curr=source_currency, destination_curr=destination_currency
             )
-            trxn_meta["currency_market_rate"] = current_market_rate
+            trxn_meta["currency_market_rate"] = round(current_market_rate, settings.DECIMAL_PLACES)
             txn.meta = trxn_meta
             txn.save(update_fields=["meta"])
             return NotificationUtil.broadcast_fx_trxn_request_notification(txn)

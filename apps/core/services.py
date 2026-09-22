@@ -465,9 +465,9 @@ class ClientService:
         source_amount = currency_pair.get("source_currency_amount")
         accepted_rate = accepted_rate or trxn.charge
         if source_amount:
-            trxn.amount = float(
-                source_amount // accepted_rate
-            )
+            trxn.amount = round(float(
+                source_amount / accepted_rate
+            ), settings.DECIMAL_PLACES)
         if not ignore_save:
             trxn.save(update_fields=["amount"])
         return trxn
