@@ -90,3 +90,8 @@ class TxnStatusType(graphene.Enum):
     CANCELLED = CANCELLED
     DECLINED = DECLINED
     INITIATED = INITIATED
+
+
+class ExchangeRangeType(graphene.ObjectType):
+    symbol = graphene.String()
+    rate = graphene.Float()

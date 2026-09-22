@@ -252,6 +252,7 @@ class ClientService:
             "currency": destination_currency or "USD",
             "business": None,
             "collection_mode": data.get("collection_mode").value,
+            "transfer_mode": data.get("transfer_mode").value,
             "meta": {
                 "client_current_coordinates": {
                     "longitude": data.get("client_current_coordinates").x,
@@ -453,19 +454,21 @@ class ClientService:
 
     @classmethod
     def _update_trxn_amount_with_accepted_rate(
-        cls, trxn: Transaction, accepted_rate: float | int | None = 0
+        cls, trxn: Transaction, accepted_rate: float | int | None = 0,
+        ignore_save: bool = False
     ) -> Transaction:
         """
         updates transaction amount based on the rate
         accepted from a proposing vendor
         """
         currency_pair = trxn.meta.get("currency_pair", {})
-        source_amount = currency_pair.get("amount_demanded")
+        source_amount = currency_pair.get("source_currency_amount")
         accepted_rate = accepted_rate or trxn.charge
         if source_amount:
             trxn.amount = float(
                 source_amount // accepted_rate
             )
+        if not ignore_save:
             trxn.save(update_fields=["amount"])
         return trxn
 
@@ -478,9 +481,7 @@ class ClientService:
         """
         from background_tasks.core.tasks import BusinessAsyncOperations
 
-        cls._update_trxn_amount_with_accepted_rate(
-            trxn, rate
-        )
+        cls._update_trxn_amount_with_accepted_rate(trxn, rate)
         BusinessAsyncOperations\
                 .notify_proposing_vendor_of_acceptance\
                 .delay(
