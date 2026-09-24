@@ -31,6 +31,7 @@ class BusinessAsyncOperations:
         """
 
         from apps.notification.email.app_emails import EmailService
+        from apps.notification.sms.services import SMSService
         from apps.auths.models import User
         from utils.wallet_utils.transactions import TransactionUtil
         from utils.notifications.notifications import NotificationUtil
@@ -91,6 +92,7 @@ class BusinessAsyncOperations:
         # )
 
         # send sms notification
+        # SMSService.send("", [""])
         return True
 
 
