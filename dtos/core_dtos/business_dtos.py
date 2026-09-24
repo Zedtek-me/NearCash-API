@@ -10,6 +10,9 @@ class CreateBusinessDto:
     description: Optional[str]
     parent_address_id: Optional[str]
 
+    def __post_init__(self):
+        pass
+
 @dataclass
 class UpdateBusinessDto(CreateBusinessDto):
     business_name: Optional[str]

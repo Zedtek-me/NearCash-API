@@ -10,7 +10,7 @@ from apps.wallet.schema.types.wallet import (
 )
 
 from apps.wallet.services import CurrencyService
-from apps.wallet.constants import ExchangeRateOutPutClass
+from dtos.wallet_dtos.currency_dtos import ExchangeRateOutPutClass
 
 from utils.helpers.exception import CustomException
 from utils.helpers.logs import logger

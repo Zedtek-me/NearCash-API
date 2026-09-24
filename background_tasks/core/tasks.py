@@ -46,6 +46,9 @@ class BusinessAsyncOperations:
         # send websocket notification to vendor before other async operations
 
         if txn.txn_type == "FX":
+            if txn.status == CANCELLED:
+                return True #we don't need to broadcast a canceled FX trxn status to vendors,
+                #since the client didn't/hasn't accepted a rate from any of them yet.
             trxn_meta = txn.meta or {}
             currency_pair: dict = trxn_meta.get("currency_pair", {})
             source_currency = currency_pair.get("source_currency_code")

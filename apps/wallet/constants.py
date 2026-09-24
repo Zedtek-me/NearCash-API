@@ -55,8 +55,3 @@ EXCHANGE_RATE_SERVICES = {
     }
 }
 
-
-@dataclass
-class ExchangeRateOutPutClass:
-    rate: float
-    symbol: str

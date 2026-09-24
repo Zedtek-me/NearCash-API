@@ -3,6 +3,7 @@ import logging
 
 from django.db import transaction
 from django.db.models import QuerySet, Q
+from django.utils import timezone
 
 
 from apps.core.models import (
@@ -10,6 +11,7 @@ from apps.core.models import (
     BusinessClientCategory, BusinessClient
 )
 from apps.core.schema.types.business_types import CashCollectionModes
+from apps.auths.models import User
 
 from utils.helpers.exception import CustomException
 
@@ -214,3 +216,22 @@ class CoreUtil:
             **kwarg_filter
         )
         return categories
+
+
+    @classmethod
+    def user_has_an_ongoing_trxn(
+        cls, user: User
+    ) -> bool:
+        """
+        Validates if the current user has an ongoing transaction.
+        """
+        from apps.wallet.models import Transaction
+        from apps.wallet.constants import IN_PROGRESS
+
+
+        last_24_hours = (timezone.now() - timezone.timedelta(hours=24))
+
+        return Transaction.objects.filter(
+            (Q(vendor__id=user.id) | Q(client__id=user.id)),
+            status=IN_PROGRESS, date_created__gte=last_24_hours
+        ).exists()
