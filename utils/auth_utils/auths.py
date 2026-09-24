@@ -118,7 +118,7 @@ class AuthUtils:
     @classmethod
     def fetch_user(
         cls, filter_params: dict, raise_exception: bool = True
-    ) -> User:
+    ) -> User | None:
         user = User.objects.filter(**filter_params).first()
         if not user and raise_exception:
             raise CustomException(

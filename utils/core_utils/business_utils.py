@@ -354,6 +354,13 @@ class BusinessUtil:
     ) -> Transaction:
         """client initiates transaction to a vendor"""
         trxn = None
+        if CoreUtil.user_has_an_ongoing_trxn(user):
+            raise CustomException(
+                message=(
+                    "You currently have a transaction in progress! "
+                    "Complete or cancel it before initiating a new one."
+                )
+            )
         if for_client:
             return ClientService.initiate_transaction(user, data)
         trxn = cls._initiate_vendor_to_vendor_transaction(user, data)

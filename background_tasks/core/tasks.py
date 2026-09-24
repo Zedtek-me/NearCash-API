@@ -31,6 +31,7 @@ class BusinessAsyncOperations:
         """
 
         from apps.notification.email.app_emails import EmailService
+        from apps.notification.sms.services import SMSService
         from apps.auths.models import User
         from utils.wallet_utils.transactions import TransactionUtil
         from utils.notifications.notifications import NotificationUtil
@@ -46,6 +47,9 @@ class BusinessAsyncOperations:
         # send websocket notification to vendor before other async operations
 
         if txn.txn_type == "FX":
+            if txn.status == CANCELLED and not txn.vendor:
+                return True #we don't need to broadcast a canceled FX trxn status to vendors,
+                #since the client didn't/hasn't accepted a rate from any of them yet.
             trxn_meta = txn.meta or {}
             currency_pair: dict = trxn_meta.get("currency_pair", {})
             source_currency = currency_pair.get("source_currency_code")
@@ -56,7 +60,7 @@ class BusinessAsyncOperations:
             current_market_rate = TransactionUtil.get_fx_market_rate_for_pair(
                 source_curr=source_currency, destination_curr=destination_currency
             )
-            trxn_meta["currency_market_rate"] = current_market_rate
+            trxn_meta["currency_market_rate"] = round(current_market_rate, settings.DECIMAL_PLACES)
             txn.meta = trxn_meta
             txn.save(update_fields=["meta"])
             return NotificationUtil.broadcast_fx_trxn_request_notification(txn)
@@ -88,6 +92,7 @@ class BusinessAsyncOperations:
         # )
 
         # send sms notification
+        # SMSService.send("", [""])
         return True
 
 
