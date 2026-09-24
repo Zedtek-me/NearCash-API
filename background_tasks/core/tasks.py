@@ -46,7 +46,7 @@ class BusinessAsyncOperations:
         # send websocket notification to vendor before other async operations
 
         if txn.txn_type == "FX":
-            if txn.status == CANCELLED:
+            if txn.status == CANCELLED and not txn.vendor:
                 return True #we don't need to broadcast a canceled FX trxn status to vendors,
                 #since the client didn't/hasn't accepted a rate from any of them yet.
             trxn_meta = txn.meta or {}
