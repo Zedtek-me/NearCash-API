@@ -61,6 +61,22 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
         return None
 
 
+    @staticmethod
+    def fetch_users_data(
+        user_ids: list[int | str],
+        data_type: str = "phone_number"
+    ) -> list:
+        """
+        returns a list of user properties' values
+        """
+        ids = []
+        actual_users = User.objects.filter(id__in=user_ids)
+        if data_type.lower() == "phone_number":
+            for user in actual_users:
+                if user.phone_number:
+                    ids.append(user.phone_number)
+        return ids
+
 class SocialToken(BaseModel):
     """records social tokens"""
     TOKEN_SOURCES = (

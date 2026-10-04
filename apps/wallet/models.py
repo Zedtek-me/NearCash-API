@@ -85,6 +85,9 @@ class Transaction(BaseModel):
         max_length=25, null=True, blank=True,
         help_text="ID of the wallet used for the transaction"
     )
+    confirmation_code = models.CharField(
+        max_length=255, null=True, blank=True
+    )
 
     class Meta(BaseModel.Meta):
         db_table = 'transaction'
