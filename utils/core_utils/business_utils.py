@@ -929,18 +929,18 @@ class BusinessUtil:
         trxn_meta = trxn.meta or {}
         if "proposed_rates" not in trxn_meta:
             trxn_meta["proposed_rates"] = []
-            trxn_meta["proposed_rates"].append({
-                "vendor": {
-                    "id": vendor.id,
-                    "name": vendor.name,
-                },
-                "proposed_rate": vendor_rate,
-                "expiry": (timezone.now() + timezone.timedelta(
-                    minutes=1
-                )).isoformat()
-            })
-            trxn.meta = trxn_meta
-            trxn.save(update_fields=["meta"])
+        trxn_meta["proposed_rates"].append({
+            "vendor": {
+                "id": vendor.id,
+                "name": vendor.name,
+            },
+            "proposed_rate": vendor_rate,
+            "expiry": (timezone.now() + timezone.timedelta(
+                minutes=1
+            )).isoformat()
+        })
+        trxn.meta = trxn_meta
+        trxn.save(update_fields=["meta"])
         BusinessAsyncOperations.run_post_opportunity_acceptance_task.delay(
             trxn_id=trxn.id
         )
