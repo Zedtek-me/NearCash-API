@@ -54,7 +54,6 @@ class BusinessAsyncOperations:
             currency_pair: dict = trxn_meta.get("currency_pair", {})
             source_currency = currency_pair.get("source_currency_code")
             destination_currency = currency_pair.get("destination_currency_code") or txn.currency
-            logger.debug(f"source currency: {source_currency}\n destination currency: {destination_currency}")
             assert (source_currency and destination_currency), \
                 "source and destination currencies must be available!"
             current_market_rate = TransactionUtil.get_fx_market_rate_for_pair(

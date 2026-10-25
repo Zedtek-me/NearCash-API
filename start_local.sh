@@ -1,6 +1,6 @@
 #!bin/sh
 
-echo "running migrations"
+echo "running migrations..."
 python3 -m manage makemigrations --noinput
 python3 -m manage migrate --noinput
 echo "starting server..."

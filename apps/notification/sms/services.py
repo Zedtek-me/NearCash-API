@@ -6,6 +6,10 @@ from dtos.generics import SMSPlatformDto
 
 from utils.helpers.exception import CustomException
 
+from celery import shared_task
+
+from apps.auths.models import User, UserProfile
+
 
 class SMSService(SMSInterface):
 
@@ -20,18 +24,23 @@ class SMSService(SMSInterface):
         self._initialize_sms_platform(self.platform_name)
 
 
-    @classmethod
-    def send(
-        cls, content: dict | str | int | float,
-        recipient_ids: list
+    @shared_task(
+        name="send.sms", bind=True
+    )
+    def send_sms(
+        self, content: dict | str | int | float,
+        recipient_msisdn: list[str | int]
     ) -> bool:
+        """
+        send sms
+        """
 
-        if not cls.platform:
+        if not SMSService.platform:
             raise CustomException(
                 message="sms platform is not configured!"
             )
-        cls.platform.send_sms(
-            content, recipient_ids
+        SMSService.platform.send_sms(
+            content, recipient_msisdn
         )
         return True
 

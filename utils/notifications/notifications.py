@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from typing import Union, Any, Optional
 
-from apps.notification.models import Notification
+from apps.notification.models import Notification, FirebaseDevice
 from apps.notification.schema.types.enums import NotificationEnum
 from apps.auths.models import User
 from apps.core.models import Business
@@ -497,3 +497,25 @@ class NotificationUtil:
             logger.exception(f"exception when sending message to {queue_name} >>>> {e}")
             return False
         return True
+
+
+    @classmethod
+    def register_firebase_device(
+        cls, user: User, installation_id: str,
+        platform: str = "web"
+    ) -> str:
+        """
+        accepts installation id from the frontend,
+        and registers it against the current user for its
+        given/current platform
+        """
+        if not installation_id:
+            raise CustomException("A Firebase installation ID is required.")
+        if platform not in dict(FirebaseDevice.PLATFORMS):
+            raise CustomException("Platform must be web, android, or ios.")
+
+        device, _ = FirebaseDevice.objects.update_or_create(
+            installation_id=installation_id,
+            defaults={"user": user, "platform": platform},
+        )
+        return device.installation_id or ""

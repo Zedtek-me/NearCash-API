@@ -38,6 +38,7 @@ class SMSPlatformDto:
     headers: dict
 
     def __post_init__(self):
+        self.name = self.name.lower()
         platform_cred = SMS_PLATFORMS.get(self.name, {})
         if not platform_cred:
             raise CustomException(
@@ -49,13 +50,27 @@ class SMSPlatformDto:
 
     def send_sms(
         self, content: dict | str | int | float,
-        recipient_ids: list
+        recipient_msisdn: list[str | int]
     ) -> bool:
         client = Client(self.base_url, self.headers)
-        payload = {
-            "recipient": recipient_ids,
-            "content": content
-        }
+        payload = {}
+        if self.name == "termii":
+            payload = self._get_termii_payload(
+                content, recipient_msisdn
+            )
         response = client.post("/sms", payload=payload)
         logger.debug(f"sms sending response::: {response}")
         return True
+
+    def _get_termii_payload(
+        self, content: dict | str | int | float,
+        recipient_msisdn: list[str | int]
+    ) -> dict:
+        """
+        returns the right payload for termii
+        """
+        payload = {
+            "recipient": recipient_msisdn,
+            "content": content
+        }
+        return payload

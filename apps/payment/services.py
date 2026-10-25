@@ -20,6 +20,13 @@ class PaymentService(PaymentInterface):
                 "Accept": "application/json",
                 "Content-Type": "application/json"
             }
+        },
+        "paystack": {
+            "url": "",
+            "default_headers": {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            }
         }
     }
 
@@ -52,6 +59,10 @@ class PaymentService(PaymentInterface):
         if cls.provider == "flutterwave":
             response = cls.get_flutterwave_virtual_account(
                 client, trxn, *args, **kwargs
+            )
+        elif cls.provider == "paystack":
+            response = cls.get_paystack_virtual_account(
+                client, trxn=trxn, **kwargs
             )
         return response
 
@@ -187,3 +198,13 @@ class PaymentService(PaymentInterface):
         PaymentAsyncOperations.process_event.delay(
             source="FLUTTERWAVE", event=data
         )
+
+    @classmethod
+    def get_paystack_virtual_account(
+        cls, client: User, trxn: Transaction,
+        **kwargs
+    ) -> dict:
+        """
+        generates a dynamic virtual account on paystack
+        """
+        return {}

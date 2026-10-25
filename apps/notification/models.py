@@ -34,3 +34,22 @@ class Notification(BaseModel):
         indexes = [
             models.Index(fields=["content_type", "object_id"]),
         ]
+
+
+class FirebaseDevice(BaseModel):
+    PLATFORMS = (("web", "Web"), ("android", "Android"), ("ios", "iOS"))
+
+    user = models.ForeignKey(
+        to="auths.User", on_delete=models.CASCADE, null=True
+    )
+    installation_id = models.CharField(max_length=255, null=True, blank=True, unique=True)
+    platform = models.CharField(max_length=20, choices=PLATFORMS, null=True, blank=True)
+    token = models.CharField(
+        max_length=255, null=True, blank=True
+    )
+
+    class Meta(BaseModel.Meta):
+        db_table = "firebase_device"
+        verbose_name = "firebase_device"
+        verbose_name_plural = "firebase_devices"
+        ordering = [ "-last_updated" ]

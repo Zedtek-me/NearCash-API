@@ -6,6 +6,7 @@ from django.conf import settings
 from apps.wallet.models import Transaction
 from apps.auths.models import User
 from apps.notification.email.app_emails import EmailService
+from apps.notification.sms.services import SMSService
 
 from utils.helpers.exception import CustomException
 from utils.helpers.logs import logger
@@ -159,13 +160,13 @@ class TransactionUtil:
         generates and send confirmation code to the
         appropriate user
         """
-        code = generate_random_codes()
+        confirmation_code = trxn.confirmation_code or generate_random_codes()
         client: User = trxn.client
         vendor: User = trxn.vendor
         user_type = "client" if not for_vendor else "vendor"
         recipients = [ client.email if not for_vendor else vendor.email ]
         context = {
-            "confirmation_code": code,
+            "confirmation_code": confirmation_code,
             "user_type": user_type,
             "user_fullname": client.full_name if not for_vendor else vendor.full_name
         }
@@ -175,8 +176,12 @@ class TransactionUtil:
             "recipients": recipients,
             "context": context
         })
-        # TODO: also send confirmation code via sms
-
+        SMSService().send_sms.delay(
+            context, [ client.phone_number if not for_vendor else vendor.phone_number ]
+        )
+        if not trxn.confirmation_code:
+            trxn.confirmation_code = confirmation_code
+            trxn.save(update_fields=["confirmation_codes"])
 
     @classmethod
     def get_fx_market_rate_for_pair(
